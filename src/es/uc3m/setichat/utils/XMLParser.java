@@ -16,7 +16,7 @@ public class XMLParser {
 	}
 	
 	
-	public static XmlPullParser getParser(){
+	public  XmlPullParser getParser(){
 		
 		
 		XmlPullParser xpp=null;
