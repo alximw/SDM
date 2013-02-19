@@ -30,10 +30,27 @@
 
         <activity android:name="es.uc3m.setichat.activity.SeTIChatConversationActivity" >
         </activity>
+        
+        
         <activity
-            android:name="es.uc3m.setichat.activity.SignUpActivity"
+            
+             android:name="es.uc3m.setichat.activity.SignUpActivity"
             android:label="@string/title_activity_sign_up" >
+            
+            <intent-filter>
+                
+                <action android:name="es.uc3m.setichat.activity.SIGNUPACTIVITY" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                </intent-filter>
+            
+           
+            
+        
         </activity>
+    
+    
+    
     </application>
 
 </manifest>

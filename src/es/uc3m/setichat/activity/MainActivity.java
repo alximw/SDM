@@ -42,8 +42,8 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 	
 	
 	/*we need to find out if we are running the app 
-	*for 1st tim, so we need a variable. This will be 
-	*update from other class, that's why is tagged as protected.
+	*for 1st time, so we need a variable. This will be 
+	*updated from SignUpActivity.java, that's why is tagged as protected.
 	* (i'm a very  elegant Java programmer and i respect the encapsulation
 	* as much as a i can :-) )
 	*/
@@ -168,7 +168,8 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		Log.v("MainActivity", "onResume: Resuming activity...");
 		super.onResume();
 	
-		if (myPrefs.getBoolean("firstrun", false)) {
+		if (myPrefs.getBoolean("firstrun", true)) {
+			
             
 			/*
 			 * 
@@ -177,7 +178,12 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 			 */
 			
 			
-			//launch an intent, wake up SignUpActivity
+			//launch an intent, wake up SignUpActivity (should define it in the manifest too)
+			
+			Intent toSignUp=new Intent("es.uc3m.setichat.activity.SignUpActivity");
+			this.startActivity(toSignUp);
+			
+			
 			
 			
         }

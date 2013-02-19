@@ -22,6 +22,8 @@ import es.uc3m.setichat.service.SeTIChatServiceBinder;
 public class SignUpActivity extends Activity implements OnClickListener {
 
 	
+	
+	
 	//views for the GUI
 	TextView email=null,nick=null,NIA=null;
 	Button bt=null;
@@ -88,19 +90,36 @@ private ServiceConnection mConnection = new ServiceConnection() {
 			@Override
 			public void onReceive(Context context, Intent intent) {
 				
+				
 				//TODO: check if the kind of message is the correct (OK or FAIL on the signUp process)
 				intent.getExtras().getCharSequence("message");
 			/*
 			 * if message.type==OK
-			 * 	set true some kind of app-global variable
-			 MainActivity.myPrefs.edit().putBoolean("firstun", true);
-
-			 *	launch an intent to the main activity (do not forget rthe maifest part)
+			 * 	set false some kind of app-global variable
+			 MainActivity.myPrefs.edit().putBoolean("firstun", false);
+*/
+		
+				//MainActivity.myPrefs.edit().putBoolean("firstun", false);
+			Log.v("[debug]","we have received a message on  SignUpActivity");
+			
+			
+			
+			/*
+			 *	launch an intent to the main activity 
+			 *
+			 *startActivity(new Intent("android.intent.action.main"));
+			 *
+			 *Log.d("[debug]","we have receive a OK message from setichat server.you are SignedUp now");
+			 */
+			
+			
+			
+			
+			/*
 			 *else
 			 *  DO NOTHING
 			 */
 			
-			//add some debug information!!!
 			
 			}
 
@@ -111,6 +130,8 @@ private ServiceConnection mConnection = new ServiceConnection() {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.signup_layout);
 	
+		Log.d("[debug]","we have reached SignUpActivity");
+		
 	email=(TextView)findViewById(R.id.tv_Email);
 	nick=(TextView)findViewById(R.id.tv_Nick);
 	NIA=(TextView)findViewById(R.id.tv_Nia);
@@ -132,7 +153,8 @@ private ServiceConnection mConnection = new ServiceConnection() {
 			//TODO:find a way to "generate" the xml message
 			
 			
-			mService.sendMessage("lol");
+			
+			
 		}
 		
 		
