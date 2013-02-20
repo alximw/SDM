@@ -22,6 +22,7 @@ import android.widget.Toast;
 import es.uc3m.setichat.R;
 import es.uc3m.setichat.service.SeTIChatService;
 import es.uc3m.setichat.service.SeTIChatServiceBinder;
+import es.uc3m.setichat.utils.XMLParser;
 
 public class SignUpActivity extends Activity implements OnClickListener {
 
@@ -39,7 +40,7 @@ public class SignUpActivity extends Activity implements OnClickListener {
 	 * proper intent..
 	 */
 private BroadcastReceiver messageReceiver;	
-
+private XMLParser xpp;
 	
 	
 //we need a service instance since we need send/receive message from this activity
@@ -84,59 +85,43 @@ private ServiceConnection mConnection = new ServiceConnection() {
 	
 	
 	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.signup_layout);	
+		Log.d("[debug]","we have reached SignUpActivity");
+		xpp=new XMLParser();
 	
-	/*
 		IntentFilter MessageFilter = new IntentFilter();
 		MessageFilter.addAction("es.uc3m.SeTIChat.CHAT_MESSAGE");
-		registerReceiver(messageReceiver, MessageFilter);
 		messageReceiver=new BroadcastReceiver(){
 
 			@Override
 			public void onReceive(Context context, Intent intent) {
+				Log.d("[debug]","we have received a message on  SignUpActivity");
+				String receivedMessage=intent.getExtras().getCharSequence("message").toString();
+				String msgRespCode=xpp.getTagValue(receivedMessage, "responseCode");
 				
 				
-				//TODO: check if the kind of message is the correct (OK or FAIL on the signUp process)
-				intent.getExtras().getCharSequence("message");
-			/*
-			 * if message.type==OK
-			 * 	set false some kind of app-global variable
-			 MainActivity.myPrefs.edit().putBoolean("firstun", false);
-*/
-		
-				//MainActivity.myPrefs.edit().putBoolean("firstun", false);
-			Log.v("[debug]","we have received a message on  SignUpActivity");
-			
-			
-			
-			/*
-			 *	launch an intent to the main activity 
-			 *
-			 *startActivity(new Intent("android.intent.action.main"));
-			 *
-			 *Log.d("[debug]","we have receive a OK message from setichat server.you are SignedUp now");
-			 */
-			
-			
-			
-			
-			/*
-			 *else
-			 *  DO NOTHING
-			 */
-			
-		
-			
-			/*
+				if(msgRespCode.equals("201")){
+					
+					Log.d("[debug]","OK message on SingUpActivity");
+					//MainActivity.myPrefs.edit().putBoolean("firstun", false);
+					String userToken=xpp.getTagValue(receivedMessage, "responseMessage");
+					Log.d("[debug]","Token received= "+userToken);
+
+					//MainActivity.myPrefs.getString("userToken",userToken );
+					//write the intent
+				}
+				
+
+
 			}
 
 		};
-		*/
 		
+	registerReceiver(messageReceiver, MessageFilter);
+
 		
-		super.onCreate(savedInstanceState);
-		setContentView(R.layout.signup_layout);
-	
-		Log.d("[debug]","we have reached SignUpActivity");
+
 		
 	email=(TextView)findViewById(R.id.tv_Email);
 	nick=(TextView)findViewById(R.id.tv_Nick);
@@ -163,7 +148,6 @@ private ServiceConnection mConnection = new ServiceConnection() {
 
 		if(v.getId()==bt.getId()){
 			
-			//TODO:find a way to "generate" the xml message
 			
 			//generate the 16-bytes random integer used for idMessage field
 			//using SecureRandom would be better, find out how!!!!!!
@@ -183,7 +167,6 @@ private ServiceConnection mConnection = new ServiceConnection() {
 		
 			
 			
-			Log.d("[MESSAGE SENT]", header+content);
 			mService.sendMessage("<?xml version="+ " \"1.0\" "+ "encoding="+" \"UTF-8\" "+"?>"+"<message>"+header+content+"</message>");
 			
 			

@@ -53,7 +53,7 @@ public class SeTIChatService extends Service implements ChannelService {
 	    // SeTIChat connection is seted up in this step. 
 	    // Mobile phone should be changed with the appropiate value
 	    channel = new ChannelAPI();
-		this.connect("MobileNumber");  
+		this.connect("10");  
 	    binder.onCreate(this);
 	    
 		 
@@ -121,7 +121,9 @@ public class SeTIChatService extends Service implements ChannelService {
 			 class SendMessage extends AsyncTask<String, String, String> {
 				 protected String doInBackground(String... messages) {
 					 Log.i("SendMessage", "send message test");
+					
 					 String message = messages[0];
+					 Log.i("SendMessage", "Message Sent: "+message );
 					 try {
 						 
 							channel.send(message, "/chat");
