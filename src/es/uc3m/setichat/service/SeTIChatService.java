@@ -24,6 +24,11 @@ import android.util.Log;
 
 public class SeTIChatService extends Service implements ChannelService {
 	
+	private static final String GAE_test="http://setichatchannelapitest.appspot.com";
+	private static final String GAE="http://setichat.appspot.com";
+
+	
+	
 	// Used to communicate with the server
 	ChannelAPI channel;
 	
@@ -86,8 +91,10 @@ public class SeTIChatService extends Service implements ChannelService {
 					 Log.i("Service connect", "Connect test");
 					 String key = keys[0];
 					 try {
-							channel = new ChannelAPI("http://setichatchannelapitest.appspot.com", key, current); //Production Example
-							channel.open();
+						
+						 channel = new ChannelAPI(GAE, key, current); //Production Example
+						 
+						 channel.open();
 							
 						} catch (Exception e){
 							System.out.println("Something went wrong...");
@@ -116,6 +123,7 @@ public class SeTIChatService extends Service implements ChannelService {
 					 Log.i("SendMessage", "send message test");
 					 String message = messages[0];
 					 try {
+						 
 							channel.send(message, "/chat");
 						} catch (IOException e) {
 							System.out.println("Problem Sending the Message");

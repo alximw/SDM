@@ -1,5 +1,9 @@
 package es.uc3m.setichat.activity;
 
+import java.math.BigInteger;
+import java.security.SecureRandom;
+import java.util.Random;
+
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -81,7 +85,7 @@ private ServiceConnection mConnection = new ServiceConnection() {
 	
 	protected void onCreate(Bundle savedInstanceState) {
 	
-	
+	/*
 		IntentFilter MessageFilter = new IntentFilter();
 		MessageFilter.addAction("es.uc3m.SeTIChat.CHAT_MESSAGE");
 		registerReceiver(messageReceiver, MessageFilter);
@@ -120,11 +124,13 @@ private ServiceConnection mConnection = new ServiceConnection() {
 			 *  DO NOTHING
 			 */
 			
+		
 			
+			/*
 			}
 
 		};
-		
+		*/
 		
 		
 		super.onCreate(savedInstanceState);
@@ -139,7 +145,14 @@ private ServiceConnection mConnection = new ServiceConnection() {
 	bt=(Button)findViewById(R.id.bt_Send);
 	bt.setOnClickListener(this);
 	
-	
+
+	if (mService == null) {
+		// Binding the activity to the service to get shared objects
+		
+		bindService(new Intent(SignUpActivity.this,
+				SeTIChatService.class), mConnection,
+				Context.BIND_AUTO_CREATE);
+	}
 	
 	}
 
@@ -152,7 +165,26 @@ private ServiceConnection mConnection = new ServiceConnection() {
 			
 			//TODO:find a way to "generate" the xml message
 			
+			//generate the 16-bytes random integer used for idMessage field
+			//using SecureRandom would be better, find out how!!!!!!
+			BigInteger b=new BigInteger(128, new Random());
 			
+			
+			String header="<header><idSource>"+NIA.getText().toString()+"</idSource>"+
+			"<idDestination>setichat@appspot.com</idDestination>"+
+			"<idMessage>"+b.toString(16)+"</idMessage>"+
+			"<type>1</type>"+
+			"<encrypted>false</encrypted>"+
+			"<signed>false</signed></header>";
+			String content="<content><signup>"+
+			"<nick>"+nick.getText().toString()+"</nick>"+
+			"<mobile>"+NIA.getText().toString()+"</mobile>"+
+			"</signup></content>";
+		
+			
+			
+			Log.d("[MESSAGE SENT]", header+content);
+			mService.sendMessage("<?xml version="+ " \"1.0\" "+ "encoding="+" \"UTF-8\" "+"?>"+"<message>"+header+content+"</message>");
 			
 			
 		}
