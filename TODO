@@ -1,0 +1,3 @@
+Add notification: when we active the setiChat servivce should see a notification on the notification bar.
+Add vibration feature: when message received, if it is a chat message, perform a vibration alert.
+Get Contacts: dev the getContacts system
