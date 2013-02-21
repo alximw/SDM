@@ -5,13 +5,7 @@
     android:orientation="vertical" >
     
     
-    <EditText 
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:hint="Email"
-        android:id="@+id/tv_Email"
-        
-        />
+
         <EditText      android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:hint="NIA"

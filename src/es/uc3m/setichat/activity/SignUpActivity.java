@@ -30,7 +30,7 @@ public class SignUpActivity extends Activity implements OnClickListener {
 	
 	
 	//views for the GUI
-	TextView email=null,nick=null,NIA=null;
+	TextView nick=null,NIA=null;
 	Button bt=null;
 	
 	
@@ -123,7 +123,6 @@ private ServiceConnection mConnection = new ServiceConnection() {
 		
 
 		
-	email=(TextView)findViewById(R.id.tv_Email);
 	nick=(TextView)findViewById(R.id.tv_Nick);
 	NIA=(TextView)findViewById(R.id.tv_Nia);
 	
