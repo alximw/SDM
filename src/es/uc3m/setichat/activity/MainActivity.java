@@ -7,6 +7,8 @@ package es.uc3m.setichat.activity;
 import android.app.ActionBar;
 import android.app.AlertDialog;
 import android.app.FragmentTransaction;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -40,7 +42,7 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 	private SeTIChatService mService;
 	private static final String STATE_SELECTED_NAVIGATION_ITEM = "selected_navigation_item";
 	
-	
+
 	
 	/*we need to find out if we are running the app 
 	*for 1st time, so we need a variable. This will be 
@@ -61,8 +63,8 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		setContentView(R.layout.activity_main);
 
         myPrefs = getSharedPreferences("es.uc3m.setichat", MODE_PRIVATE);
-
-		
+        myPrefs.edit().putString("TOKEN", "BD26B8225CE2F0F9B57F9E2878D29916");
+		myPrefs.edit().commit();
 		// Set up the action bar to show tabs.
 		final ActionBar actionBar = getActionBar();
 		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
@@ -168,8 +170,9 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 	protected void onResume() {
 		Log.v("MainActivity", "onResume: Resuming activity...");
 		super.onResume();
-	
-		if (myPrefs.getBoolean("firstrun", true)) {
+
+		
+		//if (myPrefs.getBoolean("firstrun", true)) {
 			
             
 			/*
@@ -181,13 +184,13 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 			
 			//launch an intent, wake up SignUpActivity (should define it in the manifest too)
 			
-			Intent toSignUp=new Intent("es.uc3m.setichat.activity.SIGNUPACTIVITY");
-			this.startActivity(toSignUp);
+			//Intent toSignUp=new Intent("es.uc3m.setichat.activity.SIGNUPACTIVITY");
+			//this.startActivity(toSignUp);
 			
 			
 			
 			
-        }
+       // }
 	
 	}
 
@@ -261,6 +264,8 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 	            SeTIChatServiceBinder binder = (SeTIChatServiceBinder) service;
 	            mService = binder.getService();
 	            
+	            
+	            
 	        }
 
 	        @Override
@@ -283,8 +288,7 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		CharSequence text = message;
 		int duration = Toast.LENGTH_SHORT;
 
-		Toast toast = Toast.makeText(context, text, duration);
-		toast.show();
+		
 	}
 	
 

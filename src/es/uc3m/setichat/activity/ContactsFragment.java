@@ -54,7 +54,7 @@ public class ContactsFragment extends ListFragment {
     	//Ey, a more fancy layout could be used! You dare?!
         setListAdapter(new ArrayAdapter<String>(getActivity(),
                 android.R.layout.simple_list_item_activated_1, 
-                new String[]{"Student 1 (100032456.100012597.100032599)", "Student 2 (100032451.100012591.100032591)", "Student 3 (100032453.100012593.100032593)", "Student 4 (100032454.100012594.100032594)", "Student 5 (100032455.100012595.100032595)", "Student 6 (100032456.100012596.100032596)", "Student 7 (100032457.100012597)"}));
+                new String[]{"Student 1 (100032456.100012597.100032599)","Student 2 (100032451.100012591.100032591)", "Student 3 (100032453.100012593.100032593)", "Student 4 (100032454.100012594.100032594)", "Student 5 (100032455.100012595.100032595)", "Student 6 (100032456.100012596.100032596)", "Student 7 (100032457.100012597)"}));
     }
 
 

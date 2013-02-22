@@ -4,14 +4,19 @@ package es.uc3m.setichat.service;
 
 import java.io.IOException;
 
-import edu.gvsu.cis.masl.channelAPI.ChannelAPI;
-import edu.gvsu.cis.masl.channelAPI.ChannelService;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.IBinder;
+import android.os.Vibrator;
 import android.util.Log;
+import edu.gvsu.cis.masl.channelAPI.ChannelAPI;
+import edu.gvsu.cis.masl.channelAPI.ChannelService;
+import es.uc3m.setichat.R;
+import es.uc3m.setichat.utils.XMLParser;
 
 /**
  * This service is used to connecto to the SeTIChat server. 
@@ -22,12 +27,13 @@ import android.util.Log;
  * @author Jorge Blasco Al’s <jbalis@inf.uc3m.es>
  */
 
+
 public class SeTIChatService extends Service implements ChannelService {
 	
 	private static final String GAE_test="http://setichatchannelapitest.appspot.com";
 	private static final String GAE="http://setichat.appspot.com";
-
-	
+	private static NotificationManager notificationManager;
+	private Notification notif;
 	
 	// Used to communicate with the server
 	ChannelAPI channel;
@@ -48,12 +54,9 @@ public class SeTIChatService extends Service implements ChannelService {
 	  public void onCreate() {
 	    super.onCreate();
 	    Log.i("SeTIChat Service", "Service created");
-		
 	    
-	    // SeTIChat connection is seted up in this step. 
-	    // Mobile phone should be changed with the appropiate value
 	    channel = new ChannelAPI();
-		this.connect("10");  
+		this.connect("100276882");  
 	    binder.onCreate(this);
 	    
 		 
@@ -62,6 +65,19 @@ public class SeTIChatService extends Service implements ChannelService {
 	  @Override
 	  public IBinder onBind(Intent intent) {
 		  Log.i("SeTIChat Service", "Service binded");
+		  
+		  
+		  //when the service is Binded, show a notification
+		 notificationManager=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+		 notif=new Notification.Builder(this).setContentTitle("SetiChat").setSmallIcon(R.drawable.ic_launcher)
+	 .setContentText("Setichat Service Binded").build();
+		//make the notification non-removable
+		 notif.flags|=Notification.FLAG_ONGOING_EVENT;
+		 //set an icon since it's necessary to show the notification 
+		 notif.icon=R.drawable.ic_launcher;
+		 
+		 //"launch" the notification
+		 notificationManager.notify(0,notif);		  
 		  return(binder);
 	  }
 
@@ -69,7 +85,10 @@ public class SeTIChatService extends Service implements ChannelService {
 	  public void onDestroy() {
 	    super.onDestroy();
 	    Log.i("SeTIChat Service", "Service destrotyed");
-	    // When the service is destroyed, the connection is closed 
+	    // When the service is destroyed, the connection is closed
+	    
+	    //and the notification should disappear
+	    notificationManager.cancel(0);
 	    try {
 			channel.close();
 		} catch (Exception e){
@@ -165,6 +184,9 @@ public class SeTIChatService extends Service implements ChannelService {
 			openIntent.setPackage("es.uc3m.setichat");
 			Context context = getApplicationContext();
 			context.sendBroadcast(openIntent);  
+		
+		
+		
 		}
 
 		/**
@@ -181,6 +203,18 @@ public class SeTIChatService extends Service implements ChannelService {
 			openIntent.setPackage("es.uc3m.setichat");
 			Context context = getApplicationContext();
 			context.sendBroadcast(openIntent);  
+			XMLParser xpp=new XMLParser();
+			
+			//should vibrate only when type=4 (chat message)! if commented for debugging purposes 
+			//if(xpp.getTagValue(message, "type").toString().equals("4")){
+				Vibrator vib=(Vibrator)getSystemService(VIBRATOR_SERVICE);
+				vib.vibrate(500);
+				
+				
+			//}
+			
+			
+			
 			
 		}
 
