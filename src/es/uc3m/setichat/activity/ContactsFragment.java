@@ -1,16 +1,20 @@
 package es.uc3m.setichat.activity;
 
 
-import es.uc3m.setichat.activity.SeTIChatConversationActivity;
-import es.uc3m.setichat.service.SeTIChatService;
+import java.util.ArrayList;
+
 import android.app.Activity;
 import android.app.ListFragment;
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-
+import es.uc3m.setichat.service.SeTIChatService;
+import es.uc3m.setichat.utils.DataBaseHelper;
 
 /**
  * This activity will show the list of contacts. 
@@ -20,8 +24,11 @@ import android.widget.ListView;
  * @author Guillermo Suarez de Tangil <guillermo.suarez.tangil@uc3m.es>
  * @author Jorge Blasco Al’s <jbalis@inf.uc3m.es>
  */
+
 public class ContactsFragment extends ListFragment {
 
+	private DataBaseHelper helper;
+	
 	// Service, that may be used to access chat features
 	private SeTIChatService mService;
 
@@ -52,9 +59,40 @@ public class ContactsFragment extends ListFragment {
         super.onCreate(savedInstanceState);
     	//Populate list with contacts.
     	//Ey, a more fancy layout could be used! You dare?!
-        setListAdapter(new ArrayAdapter<String>(getActivity(),
-                android.R.layout.simple_list_item_activated_1, 
-                new String[]{"Student 1 (100032456.100012597.100032599)","Student 2 (100032451.100012591.100032591)", "Student 3 (100032453.100012593.100032593)", "Student 4 (100032454.100012594.100032594)", "Student 5 (100032455.100012595.100032595)", "Student 6 (100032456.100012596.100032596)", "Student 7 (100032457.100012597)"}));
+		ArrayList<String> list=new ArrayList<String>();
+        SQLiteDatabase database=MainActivity.helper.getReadableDatabase();
+		
+        
+        Cursor resultSet= database.query("contacts",null,null,null, null, null, null);
+        Log.i("[debug]",String.valueOf(resultSet.getCount()));
+		if(resultSet.moveToFirst()){
+			do{
+				list.add(resultSet.getString(0)+"."+resultSet.getString(1));
+				
+			}while(resultSet.moveToNext());
+			
+		}else{
+			list.add("<empty contact list>");
+		}
+		
+		String[] contacts =new String[list.size()];
+		for(int i=0;i<list.size();i++){
+			contacts[i]=list.get(i);
+			
+			
+		}
+		
+		
+        
+ArrayAdapter myContactsAdapter=new ArrayAdapter<String>(getActivity(),
+android.R.layout.simple_list_item_activated_1,contacts );
+setListAdapter(myContactsAdapter);
+  
+    
+    
+    
+    
+    
     }
 
 

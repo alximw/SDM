@@ -2,6 +2,8 @@ package es.uc3m.setichat.utils;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.HashMap;
+import java.util.Hashtable;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -86,7 +88,69 @@ return value;
 }
 	
 	
+	public HashMap<String, String> retrieveContacts(String XMLMessage){
+		
+		HashMap<String, String> contactsTable=new HashMap<String, String>();
+		int eventType=0;
+		boolean foundNick=false,foundNumber=false;
+		XmlPullParser xpp=getParser();
+		
+		String nick="",number="";
+		
+		try {
+			xpp.setInput(new StringReader(XMLMessage));
+		
+		
+	     while (eventType != XmlPullParser.END_DOCUMENT) {
+	      if(eventType == XmlPullParser.START_DOCUMENT) {
+	    	  
+	      } else if(eventType == XmlPullParser.START_TAG) {
+	         if(xpp.getName().equals("mobile")){
+	        	 foundNumber=true;
+	         }else if(xpp.getName().equals("nick")){
+	        	 foundNick=true;
+
+	         }
+	          
+	      } else if(eventType == XmlPullParser.END_TAG) {
+	    	 
+	    	  
+	    	  
+	      } else if(eventType == XmlPullParser.TEXT) {
+	    	  if(foundNick){
+	    		  nick=xpp.getText();
+	    		  foundNick=false;
+	    	  }else if(foundNumber){
+	    		  number=xpp.getText();
+	    		  foundNumber=false;
+	    	  }
+	    	 
+	      
+	      }
+	      
+	      if(nick!="" && number!=""){
+	    	  
+	    	  contactsTable.put(number, nick);
+	    	  nick="";
+	    	  number="";
+	    	  
+	      }
+	      
+	      eventType = xpp.next();
+	     }
+		}catch(XmlPullParserException e){
+			
+			e.printStackTrace();
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	
+		
+		return contactsTable;
+
+	}
 	
 	
 

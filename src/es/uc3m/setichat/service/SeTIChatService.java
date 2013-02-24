@@ -3,12 +3,14 @@ package es.uc3m.setichat.service;
 
 
 import java.io.IOException;
+import java.util.HashMap;
 
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 import android.os.IBinder;
 import android.os.Vibrator;
@@ -16,6 +18,7 @@ import android.util.Log;
 import edu.gvsu.cis.masl.channelAPI.ChannelAPI;
 import edu.gvsu.cis.masl.channelAPI.ChannelService;
 import es.uc3m.setichat.R;
+import es.uc3m.setichat.activity.MainActivity;
 import es.uc3m.setichat.utils.XMLParser;
 
 /**
@@ -35,6 +38,8 @@ public class SeTIChatService extends Service implements ChannelService {
 	private static NotificationManager notificationManager;
 	private Notification notif;
 	
+	
+	private SQLiteDatabase database;
 	// Used to communicate with the server
 	ChannelAPI channel;
 	
@@ -56,7 +61,7 @@ public class SeTIChatService extends Service implements ChannelService {
 	    Log.i("SeTIChat Service", "Service created");
 	    
 	    channel = new ChannelAPI();
-		this.connect("100276882");  
+		this.connect("100276690");  
 	    binder.onCreate(this);
 	    
 		 
@@ -67,17 +72,7 @@ public class SeTIChatService extends Service implements ChannelService {
 		  Log.i("SeTIChat Service", "Service binded");
 		  
 		  
-		  //when the service is Binded, show a notification
-		 notificationManager=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
-		 notif=new Notification.Builder(this).setContentTitle("SetiChat").setSmallIcon(R.drawable.ic_launcher)
-	 .setContentText("Setichat Service Binded").build();
-		//make the notification non-removable
-		 notif.flags|=Notification.FLAG_ONGOING_EVENT;
-		 //set an icon since it's necessary to show the notification 
-		 notif.icon=R.drawable.ic_launcher;
-		 
-		 //"launch" the notification
-		 notificationManager.notify(0,notif);		  
+				  
 		  return(binder);
 	  }
 
@@ -178,11 +173,26 @@ public class SeTIChatService extends Service implements ChannelService {
 		@Override
 		public void onOpen() {
 			Log.i("onOpen", "Channel Opened");
+			
+			//when the service is Binded, show a notification
+			 notificationManager=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+			 notif=new Notification.Builder(this).setContentTitle("SetiChat").setTicker("setichat started").setSmallIcon(R.drawable.ic_launcher)
+		 .setContentText("Setichat Service Binded").build();
+			//make the notification non-removable
+			 notif.flags|=Notification.FLAG_ONGOING_EVENT;
+			 //set an icon since it's necessary to show the notification 
+			 notif.icon=R.drawable.ic_launcher;
+			 
+			 //"launch" the notification
+			 notificationManager.notify(0,notif);
+			
+			
 			String intentKey = "es.uc3m.SeTIChat.CHAT_OPEN";
 			Intent openIntent = new Intent(intentKey);
 			// ÀWhy should we set a Package?
 			openIntent.setPackage("es.uc3m.setichat");
 			Context context = getApplicationContext();
+			
 			context.sendBroadcast(openIntent);  
 		
 		
@@ -204,14 +214,46 @@ public class SeTIChatService extends Service implements ChannelService {
 			Context context = getApplicationContext();
 			context.sendBroadcast(openIntent);  
 			XMLParser xpp=new XMLParser();
-			
+			HashMap<String, String> contacts=null;
+			String query="";
 			//should vibrate only when type=4 (chat message)! if commented for debugging purposes 
 			//if(xpp.getTagValue(message, "type").toString().equals("4")){
 				Vibrator vib=(Vibrator)getSystemService(VIBRATOR_SERVICE);
-				vib.vibrate(500);
+				vib.vibrate(1000);
 				
 				
 			//}
+			//should read the contacts and write them to DB
+			 if(xpp.getTagValue(message, "type").toString().equals("3")){
+				
+				 
+				 contacts=xpp.retrieveContacts(message);
+				
+
+				//Log.i("[debug]",xpp.retrieveContacts(message).entrySet().iterator().next().toString());
+				 database=MainActivity.helper.getWritableDatabase();
+				
+				if(!(database==null)){
+					Log.i("[debug]", "hola");
+
+							for(String key:contacts.keySet()){
+
+							query="INSERT INTO contacts(nick,number) VALUES ('"+contacts.get(key)+"', '"+key+"');";
+							Log.i("[debug]", query);
+
+							database.execSQL(query);	
+								
+							}
+						
+						
+					
+					database.close();
+					
+					
+				}
+				
+				
+			}
 			
 			
 			

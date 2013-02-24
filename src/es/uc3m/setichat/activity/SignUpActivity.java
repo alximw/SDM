@@ -95,21 +95,32 @@ private ServiceConnection mConnection = new ServiceConnection() {
 		messageReceiver=new BroadcastReceiver(){
 
 			@Override
+			
 			public void onReceive(Context context, Intent intent) {
 				Log.d("[debug]","we have received a message on  SignUpActivity");
 				String receivedMessage=intent.getExtras().getCharSequence("message").toString();
 				String msgRespCode=xpp.getTagValue(receivedMessage, "responseCode");
 				
 				
-				if(msgRespCode.equals("201")){
+				if(msgRespCode.equals("406")){
 					
 					Log.d("[debug]","OK message on SingUpActivity");
-					//MainActivity.myPrefs.edit().putBoolean("firstun", false);
-					String userToken=xpp.getTagValue(receivedMessage, "responseMessage");
-					Log.d("[debug]","Token received= "+userToken);
+					//change the value of firstrun control variable
+					MainActivity.myPrefs.edit().putBoolean("firstrun", false).commit();
 
-					//MainActivity.myPrefs.getString("userToken",userToken );
-					//write the intent
+					//get the returned user token...
+					String userToken=xpp.getTagValue(receivedMessage, "responseMessage");
+					//...and save it on the sharedPreferences object as "token"
+					MainActivity.myPrefs.edit().putString("token", userToken).commit();
+					Log.d("[debug]","Token received= "+userToken);
+					//commit the changes performed on sharedPreferences object
+					
+					//write and launch the intent
+					
+					Intent toMainActivity=new Intent(getApplicationContext(), MainActivity.class);
+					Log.d("[debug]","asdasdasd");
+
+					startActivity(toMainActivity);
 				}
 				
 
@@ -142,6 +153,15 @@ private ServiceConnection mConnection = new ServiceConnection() {
 
 	
 	
+	@Override
+	protected void onDestroy() {
+		// TODO Auto-generated method stub
+		super.onDestroy();
+		this.unregisterReceiver(messageReceiver);
+	}
+
+
+
 	@Override
 	public void onClick(View v) {
 

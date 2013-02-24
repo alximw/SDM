@@ -142,6 +142,7 @@ public class SeTIChatConversationActivity extends Activity {
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
+		unregisterReceiver(receiver);
 	}
 	
 
