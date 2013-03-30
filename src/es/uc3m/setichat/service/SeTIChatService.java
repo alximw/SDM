@@ -53,7 +53,6 @@ public class SeTIChatService extends Service implements ChannelService {
 
 
 	ActivityManager am;
-
 	// Used to communicate with the server
 	ChannelAPI channel;
 
