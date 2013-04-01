@@ -48,7 +48,7 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 
 
 
-
+	private ActionBar actionBar;
 	// Service used to access the SeTIChat server
 	private SeTIChatService mService;
 	private static final String STATE_SELECTED_NAVIGATION_ITEM = "selected_navigation_item";
@@ -101,10 +101,12 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 
 
 		// Set up the action bar to show tabs.
-		final ActionBar actionBar = getActionBar();
+		 actionBar = getActionBar();
 		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
 		// For each of the sections in the app, add a tab to the action bar.
 		actionBar.addTab(actionBar.newTab().setText("Contacts")
+				.setTabListener(this));
+		actionBar.addTab(actionBar.newTab().setText("Settings")
 				.setTabListener(this));
 
 		Log.i("Activty", "onCreate");
@@ -194,9 +196,11 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 					//close the database
 					database.close();
 
-					//refresh the adapter with new contacts the same way we do on ContactFragment.java
-					ContactsAdapter updated_adapter=new ContactsAdapter(getApplicationContext(),R.layout.custom_lw_layout,contacts);
-					((ListFragment)(getFragmentManager().findFragmentById(R.id.container)) ).setListAdapter(updated_adapter);
+					if(actionBar.getSelectedTab().getPosition()==0){
+						//refresh the adapter with new contacts the same way we do on ContactFragment.java
+						ContactsAdapter updated_adapter=new ContactsAdapter(getApplicationContext(),R.layout.custom_lw_layout,contacts);
+						((ListFragment)(getFragmentManager().findFragmentById(R.id.container)) ).setListAdapter(updated_adapter);
+					}
 				}
 			}
 		};
@@ -277,7 +281,9 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 
 			}
 		}
+		if(actionBar.getSelectedTab().getPosition()==0){
 		getFragmentManager().beginTransaction().replace(R.id.container, new ContactsFragment()).commit();
+		}
 	}
 
 
@@ -309,8 +315,17 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		// When the given tab is selected, show the tab contents in the
 		// container view.
 
-		ContactsFragment fragment = new ContactsFragment();
-		getFragmentManager().beginTransaction().replace(R.id.container, fragment).commit();
+		if(tab.getPosition()==0){
+			ContactsFragment fragment = new ContactsFragment();
+			getFragmentManager().beginTransaction().replace(R.id.container, fragment).commit();
+			Log.i("dfsdf","sdfsf");
+		}else if(tab.getPosition()==1){
+			SettingsFragment fragment =new SettingsFragment();
+			getFragmentManager().beginTransaction().replace(R.id.container, fragment).commit();
+
+			
+		}
+
 	}
 
 	@Override
@@ -321,8 +336,18 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 	@Override
 	public void onTabReselected(ActionBar.Tab tab,
 			FragmentTransaction fragmentTransaction) {
-		ContactsFragment fragment = new ContactsFragment();
-		getFragmentManager().beginTransaction().replace(R.id.container, fragment).commit();
+		
+		if(tab.getPosition()==0){
+			ContactsFragment fragment = new ContactsFragment();
+			getFragmentManager().beginTransaction().replace(R.id.container, fragment).commit();
+			Log.i("dfsdf","sdfsf");
+		}else if(tab.getPosition()==1){
+			SettingsFragment fragment =new SettingsFragment();
+			getFragmentManager().beginTransaction().replace(R.id.container, fragment).commit();
+
+			
+		}
+		
 	}
 
 	public void update(){

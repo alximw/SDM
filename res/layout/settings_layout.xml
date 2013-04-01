@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+    
+    <CheckBox
+        android:id="@+id/cb_scmd"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="left"
+        android:checked="false"
+        android:layout_marginBottom="5dp"
+        android:text="Use security features( ciphered and digital sign)." />
+	
+    	<Button
+        android:id="@+id/bt_rvk"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        
+        android:text="Revoke Key Pair" />
+    
+    <LinearLayout 
+            android:layout_width="match_parent"
+    		android:layout_height="match_parent"
+    		android:orientation="vertical" 
+        	android:gravity="bottom"
+        >
+
+    <Button
+        android:id="@+id/bt_sv"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        
+        android:text="Save Settings" />
+    
+    </LinearLayout>
+
+"
+</LinearLayout>
