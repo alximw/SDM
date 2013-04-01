@@ -56,6 +56,8 @@ public class SeTIChatService extends Service implements ChannelService {
 	// Used to communicate with the server
 	ChannelAPI channel;
 
+	
+	public static boolean channelIsOpen=false;
 	// Used to bind activities
 	private final SeTIChatServiceBinder binder=new SeTIChatServiceBinder();
 
@@ -67,14 +69,27 @@ public class SeTIChatService extends Service implements ChannelService {
 	}
 
 
+	public void connectService(){
+		
+		channel = new ChannelAPI();
+		this.connect(MainActivity.myPrefs.getString("number", ""));  
+		channelIsOpen=true;
+		
+	}
 
 	@Override
 	public void onCreate() {
 		super.onCreate();
 		Log.i("SeTIChat Service", "Service created");
 
-		channel = new ChannelAPI();
-		this.connect("100276690");  
+		if(!MainActivity.myPrefs.getString("number", "").equals("")){
+			
+			channel = new ChannelAPI();
+			this.connect(MainActivity.myPrefs.getString("number", ""));  
+			channelIsOpen=true;
+		}
+		
+		
 		binder.onCreate(this);
 
 	}

@@ -9,8 +9,10 @@ import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ListView;
+import android.widget.Toast;
 import es.uc3m.setichat.R;
 import es.uc3m.setichat.contactsHandling.Contact;
 import es.uc3m.setichat.contactsHandling.ContactsAdapter;
@@ -30,6 +32,7 @@ public class ContactsFragment extends ListFragment {
 
 	private DataBaseHelper helper;
 	int state=0;
+	private static boolean  firstCreation=true;
 	// Service, that may be used to access chat features
 	private SeTIChatService mService;
 
@@ -78,7 +81,15 @@ public class ContactsFragment extends ListFragment {
 		
 		if(database!=null){
 			//if the db is not null, OK, get the contacts from database
-			contacts=DataBaseHelper.contactsToArray(database);		
+			contacts=DataBaseHelper.contactsToArray(database);	
+
+			if(contacts.get(0)==null && firstCreation){
+				
+				Toast.makeText(getActivity(), "Preparing contact list...", 
+						Toast.LENGTH_SHORT).show();
+
+			}
+
 		}else{
 			//some trouble getting the DB instance! throw an exception
 		throw(new SQLiteException("NULL DATABASE"));
@@ -97,6 +108,8 @@ public class ContactsFragment extends ListFragment {
 		
 		//don't forget to close the DB
 		database.close();
+		
+		firstCreation=false;
 	}
 
 
@@ -107,6 +120,8 @@ public class ContactsFragment extends ListFragment {
 	 */
 	
 	public void onListItemClick(ListView l, View v, int position, long id) {
+	
+		if(getListAdapter().getItem(position)!=null){
 		//create a new intent, this will take us from main activity to conversationactivity
 		Intent intent = new Intent();
 		intent.setClass(getActivity(), SeTIChatConversationActivity.class);
@@ -116,9 +131,9 @@ public class ContactsFragment extends ListFragment {
 
 		//launch the intent
 		startActivity(intent);
+		}
+
 	}
-
-
 
 
 

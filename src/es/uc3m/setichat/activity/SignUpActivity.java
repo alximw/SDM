@@ -30,10 +30,10 @@ public class SignUpActivity extends Activity implements OnClickListener {
 
 
 	//views for the GUI
-	TextView nick=null,NIA=null;
+	TextView Nick=null,NIA=null;
 	Button bt=null;
 	String number="";
-
+	String nick="";
 	/*
 	 * In order to be able of know if we have received the OK  or 
 	 * the FAIL message, we need to "subscribe" the activity to the 
@@ -48,7 +48,6 @@ public class SignUpActivity extends Activity implements OnClickListener {
 	//used for save the 16-bit randomly-generated numbers
 	BigInteger b;
 
-	//and a ServiceConection too! because we need to instantiate the server (this is CTRL+C + CTRL+V from MainActivity)
 	private ServiceConnection mConnection = new ServiceConnection() {
 
 		public void onServiceConnected(ComponentName className, IBinder service) {
@@ -107,7 +106,6 @@ public class SignUpActivity extends Activity implements OnClickListener {
 					String userToken=xpp.getTagValue(receivedMessage, "responseMessage");
 					//...and save it on the sharedPreferences object as "token"
 					MainActivity.myPrefs.edit().putString("token", userToken).commit();
-					MainActivity.myPrefs.edit().putString("number", number ).commit();
 
 					Log.d("[debug]","Token received= "+userToken);
 					//commit the changes performed on sharedPreferences object
@@ -115,14 +113,35 @@ public class SignUpActivity extends Activity implements OnClickListener {
 					Intent toMainActivity=new Intent(getApplicationContext(), MainActivity.class);
 					Log.d("[debug]","Back to MAinActivity");
 					startActivity(toMainActivity);
+					finish();
+				
 				}
+				
+				//else if(msgRespCode.equals("406")){
+					/*
+					 * this could happen for 2 reasons:
+					 * the user you're trying to register is already registered.
+					 * OR
+					 * the channel key and the message idSource didn't match.
+					 * 
+					 * Notice that second reason is not possible since we are sure
+					 * that the message's idSource and the channel key are the same and
+					 * match with the NIA entered by the user.
+					 * 
+					 * known this, we can move to mainActivity as usual
+					 * assuming we already have the user token.
+					 * 
+					 */
+					
+					
+				//}
 			}
 		};
 		registerReceiver(messageReceiver, MessageFilter);
 
 
 		//initialize all the UI views
-		nick=(TextView)findViewById(R.id.tv_Nick);
+		Nick=(TextView)findViewById(R.id.tv_Nick);
 		NIA=(TextView)findViewById(R.id.tv_Nia);
 		bt=(Button)findViewById(R.id.bt_Send);
 		if(MainActivity.myPrefs.getBoolean("first", false)){
@@ -130,15 +149,20 @@ public class SignUpActivity extends Activity implements OnClickListener {
 		}
 		bt.setOnClickListener(this);
 
+	}
 
-		if (mService == null) {
-			// Binding the activity to the service to get shared objects
 
-			bindService(new Intent(SignUpActivity.this,
-					SeTIChatService.class), mConnection,
-					Context.BIND_AUTO_CREATE);
-		}
 
+	@Override
+	protected void onStart() {
+		
+		super.onStart();
+	
+		bindService(new Intent(SignUpActivity.this,
+				SeTIChatService.class), mConnection,
+				Context.BIND_AUTO_CREATE);
+	
+	
 	}
 
 
@@ -160,6 +184,7 @@ public class SignUpActivity extends Activity implements OnClickListener {
 		super.onStop();
 
 			this.unregisterReceiver(messageReceiver);
+			unbindService(mConnection);
 	
 	}
 	
@@ -176,6 +201,10 @@ public class SignUpActivity extends Activity implements OnClickListener {
 		if(v.getId()==bt.getId()){
 			//send the signup message
 			number=NIA.getText().toString();
+			nick=Nick.getText().toString();
+			MainActivity.myPrefs.edit().putString("number", number ).commit();
+			MainActivity.myPrefs.edit().putString("number", number ).commit();
+			mService.connectService();
 			mService.sendMessage(createSignUpMessage());
 		}
 
@@ -202,7 +231,7 @@ public class SignUpActivity extends Activity implements OnClickListener {
 				"<encrypted>false</encrypted>"+
 				"<signed>false</signed></header>";
 		String content="<content><signup>"+
-				"<nick>"+nick.getText().toString()+"</nick>"+
+				"<nick>"+nick+"</nick>"+
 				"<mobile>"+NIA.getText().toString()+"</mobile>"+
 				"</signup></content></message>";
 

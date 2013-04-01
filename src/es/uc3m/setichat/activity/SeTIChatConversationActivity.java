@@ -224,25 +224,41 @@ public class SeTIChatConversationActivity extends Activity {
 		registerReceiver(receiver,myfilter);
 
 
-		if (mService == null) {
-			// Binding the activity to the service to get shared objects
-			if (DEBUG)
-				Log.d("SeTIChatConversationActivity", "Binding activity");
-			bindService(new Intent(SeTIChatConversationActivity.this,
-					SeTIChatService.class), mConnection,
-					Context.BIND_AUTO_CREATE);
-		} else {
+		
 			render();
-		}
+		
 
 
 	}
+	
+	
+	
+	
+
+	@Override
+	protected void onStart() {
+		// TODO Auto-generated method stub
+		super.onStart();
+		
+		bindService(new Intent(SeTIChatConversationActivity.this,
+				SeTIChatService.class), mConnection,
+				Context.BIND_AUTO_CREATE);
+		// Tell the user about the service.
+		Toast.makeText(SeTIChatConversationActivity.this, "Connected", // R.string.local_service_connected,
+				Toast.LENGTH_SHORT).show();
+	}
+
+
+
+
 
 	@Override
 	protected void onStop() {
 		super.onStop();
 		if (DEBUG)
 			Log.d("SeTIChatConversationActivity", "Unbinding activity");
+		unbindService(mConnection);
+		
 	}
 
 
@@ -258,21 +274,11 @@ public class SeTIChatConversationActivity extends Activity {
 	protected void onResume() {
 		super.onResume();
 
-		if (mService == null) {
-			// Binding the activity to the service to get shared objects
-			if (DEBUG)
-				Log.d("SeTIChatConversationActivity", "Binding activity");
-			bindService(new Intent(SeTIChatConversationActivity.this,
-					SeTIChatService.class), mConnection,
-					Context.BIND_AUTO_CREATE);
-		} 
 
 	}
 
 	private void render() {
-		// Tell the user about the service.
-		Toast.makeText(SeTIChatConversationActivity.this, "Connected", // R.string.local_service_connected,
-				Toast.LENGTH_SHORT).show();
+
 
 		int index = getIntent().getIntExtra("index", -1);
 		if (DEBUG)

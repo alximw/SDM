@@ -64,6 +64,8 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 	 */
 	public static SharedPreferences myPrefs=null;
 
+	boolean serviceBounded=false;
+	
 	/*
 	 * this object makes easier the interaction with the DB
 	 */
@@ -144,7 +146,7 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 				int duration = Toast.LENGTH_SHORT;
 
 				Toast toast = Toast.makeText(context1, text, duration);
-				toast.show();
+				//toast.show();
 			}
 		};
 
@@ -205,7 +207,8 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		registerReceiver(chatMessageReceiver, chatMessageFilter);
 
 
-		if (mService == null) {
+		if (!serviceBounded) {
+			
 			// Binding the activity to the service to get shared objects
 
 			bindService(new Intent(MainActivity.this,
@@ -224,7 +227,12 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
-		// We stop the service if activity is destroyed
+		
+		//first unbound from the service
+		unbindService(mConnection);
+		
+		// and then stop it
+		
 		stopService(new Intent(MainActivity.this,
 				SeTIChatService.class));
 		// We also unregister the receivers to avoid leaks.
@@ -242,14 +250,7 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		super.onResume();
 
 
-		if (mService == null) {
-			// Binding the activity to the service to get shared objects
-
-			bindService(new Intent(MainActivity.this,
-					SeTIChatService.class), mConnection,
-					Context.BIND_AUTO_CREATE);
-
-		}
+		
 
 		//only for debug purposes, comment it for normal execution
 		myPrefs.edit().putBoolean("first", false).commit();
@@ -269,7 +270,7 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 
 		}else{
 
-			if(mService!=null){
+			if(serviceBounded && SeTIChatService.channelIsOpen){
 
 				//check for missed messages when the activity is resumed
 				mService.sendMessage(createConnectionMessage());
@@ -348,11 +349,14 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 			Log.i("Service Connection", "Estamos en onServiceConnected");
 			SeTIChatServiceBinder binder = (SeTIChatServiceBinder) service;
 			mService = binder.getService();
-
+			serviceBounded=true;
+			
+			if(SeTIChatService.channelIsOpen){
 			//we have to do 2 things. First we have to check if there are new messages
 			mService.sendMessage(createConnectionMessage());
 			//second we have to check for new contacts
 			mService.sendMessage(createContactsRequestMessage());
+			}
 
 		}
 
@@ -374,10 +378,12 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 
 
 	//SeTIChatServiceDelegate Methods
-	public void showNotification(String message){
+	public  void showNotification(String message){
 		Context context = getApplicationContext();
 		CharSequence text = message;
 		int duration = Toast.LENGTH_SHORT;
+		Toast.makeText(context, text, 
+				duration).show();
 	}
 
 
