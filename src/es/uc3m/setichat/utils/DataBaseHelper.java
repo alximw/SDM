@@ -1,5 +1,14 @@
 package es.uc3m.setichat.utils;
 
+import java.math.BigInteger;
+import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.sql.Time;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,18 +29,12 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 	private final static String CONTACTS_TABLE="contacts";
 	private final static String UNREADMESSAGES_TABLE="unreadmessages";
 	private final static String MESSAGES_TABLE="messages";
+	private final static String PUBLIC_KEYS_TABLE="pubkeys";
+	private final static String KEYPAIRS_TABLE="keypairs";
 
 
 
-
-	String create_contacts = "CREATE TABLE contacts (" +
-			"nick	TEXT," +
-			"number	TEXT PRIMARY KEY);";
-	String create_unreadmessages=
-			" CREATE TABLE unreadmessages ("+
-					"_id INTEGER PRIMARY KEY, "+
-					"number	TEXT ," +
-					"message TEXT);"; 
+				
 
 	public DataBaseHelper(Context context, String name, CursorFactory factory,
 			int version) {
@@ -49,9 +52,10 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 		database.execSQL("CREATE TABLE "+UNREADMESSAGES_TABLE+"("+"_id INTEGER PRIMARY KEY, number TEXT ,message TEXT);");
 		//messages table
 		database.execSQL("CREATE TABLE "+MESSAGES_TABLE+"(_id INTEGER PRIMARY KEY, sender TEXT, receiver TEXT, date TIMESTAMP DEFAULT current_timestamp, message TEXT);");
-
-
-
+		//public keys
+		database.execSQL("CREATE TABLE "+PUBLIC_KEYS_TABLE+"(number TEXT,key TEXT,isValid INTEGER, PRIMARY KEY(number,isValid));");
+		//keyPairs
+		database.execSQL("CREATE TABLE "+KEYPAIRS_TABLE+"(pubKey TEXT,privKey TEXT,isValid INTEGER, PRIMARY KEY(pubKey,privKey));");
 
 
 	}
@@ -71,6 +75,10 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 		database.execSQL("CREATE TABLE "+UNREADMESSAGES_TABLE+"("+"_id INTEGER PRIMARY KEY, number TEXT ,message TEXT);");
 		//messages table
 		database.execSQL("CREATE TABLE "+MESSAGES_TABLE+"(_id INTEGER PRIMARY KEY, sender TEXT, receiver TEXT, date INT, message TEXT);");
+		//public keys
+		database.execSQL("CREATE TABLE "+PUBLIC_KEYS_TABLE+"(number TEXT,key TEXT,isValid INTEGER, PRIMARY KEY(number,isValid));");
+		//keyPairs
+		database.execSQL("CREATE TABLE "+KEYPAIRS_TABLE+"(pubKey TEXT,privKey TEXT,isValid INTEGER, PRIMARY KEY(pubKey,privKey));");
 
 	}
 
@@ -278,8 +286,59 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 		}
 
 	}
+	
+	public static void saveKeyPair(KeyPair pair,SQLiteDatabase db){
+		String pubKey=Base64.encodeToString(pair.getPublic().getEncoded(), false);
+		String privKey=Base64.encodeToString(pair.getPrivate().getEncoded(), false);
+		String query="INSERT INTO "+KEYPAIRS_TABLE+ "(pubKey,privKey,isValid) VALUES('"+pubKey+"', '"+privKey+"', '1');";
+		
+		db.execSQL("INSERT INTO "+KEYPAIRS_TABLE+ "(pubKey,privKey,isValid) VALUES('"+pubKey+"', '"+privKey+"', '1');");
+		
+		
+		Log.i("[save keys query]",query);
+		
+	}
+	
+	
+	public static KeyPair retrieveKeyPair(SQLiteDatabase db) {
+		Cursor result;
+		PrivateKey privKey=null;
+		PublicKey pubKeyString=null;
+		KeyPair pair=null;
+		
+		result=db.query(KEYPAIRS_TABLE, new String[]{"pubKey","privKey"},"isValid=?" ,new String[]{"1"} ,null,null,null);
+		
+		if(result.moveToFirst()){
+			//Log.i("[retrieved pubKey]",result.getString(0));
+			//Log.i("[retrieved privKey]",result.getString(1));
+			
+			try{
+		//  get public key
+		    X509EncodedKeySpec spec = new X509EncodedKeySpec(Base64.decode(result.getString(0)));
+		    KeyFactory kf = KeyFactory.getInstance("RSA");
+		    pubKeyString = kf.generatePublic(spec);
 
-
+		//get Private Key
+		    PKCS8EncodedKeySpec specPriv = new PKCS8EncodedKeySpec(Base64.decode(result.getString(1)));
+		     privKey = kf.generatePrivate(specPriv);
+			}catch(Exception e){
+				e.printStackTrace();
+				
+			}
+			
+			pair =new KeyPair(pubKeyString, privKey);
+			
+		}
+		
+		
+		return pair;
+	}
+	
+	
+	
+	
+	
+	
 }
 
 

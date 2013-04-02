@@ -1,6 +1,8 @@
 package es.uc3m.setichat.activity;
 
 import java.math.BigInteger;
+import java.security.KeyPair;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.Random;
 
@@ -11,6 +13,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -22,6 +27,9 @@ import android.widget.Toast;
 import es.uc3m.setichat.R;
 import es.uc3m.setichat.service.SeTIChatService;
 import es.uc3m.setichat.service.SeTIChatServiceBinder;
+import es.uc3m.setichat.utils.Base64;
+import es.uc3m.setichat.utils.DataBaseHelper;
+import es.uc3m.setichat.utils.SecurityHelper;
 import es.uc3m.setichat.utils.XMLParser;
 
 public class SignUpActivity extends Activity implements OnClickListener {
@@ -100,15 +108,21 @@ public class SignUpActivity extends Activity implements OnClickListener {
 
 				if(msgRespCode.equals("201")){
 					Log.d("[debug]","OK message on SingUpActivity");
+					
 					//change the value of firstrun control variable
 					MainActivity.myPrefs.edit().putBoolean("first", false).commit();
 					//get the returned user token...
 					String userToken=xpp.getTagValue(receivedMessage, "responseMessage");
 					//...and save it on the sharedPreferences object as "token"
 					MainActivity.myPrefs.edit().putString("token", userToken).commit();
-
 					Log.d("[debug]","Token received= "+userToken);
-					//commit the changes performed on sharedPreferences object
+					
+					
+					
+					new MyTask().execute(new String[0]);
+					
+					
+					
 					//write and launch the intent
 					Intent toMainActivity=new Intent(getApplicationContext(), MainActivity.class);
 					Log.d("[debug]","Back to MAinActivity");
@@ -117,24 +131,7 @@ public class SignUpActivity extends Activity implements OnClickListener {
 				
 				}
 				
-				//else if(msgRespCode.equals("406")){
-					/*
-					 * this could happen for 2 reasons:
-					 * the user you're trying to register is already registered.
-					 * OR
-					 * the channel key and the message idSource didn't match.
-					 * 
-					 * Notice that second reason is not possible since we are sure
-					 * that the message's idSource and the channel key are the same and
-					 * match with the NIA entered by the user.
-					 * 
-					 * known this, we can move to mainActivity as usual
-					 * assuming we already have the user token.
-					 * 
-					 */
-					
-					
-				//}
+				
 			}
 		};
 		registerReceiver(messageReceiver, MessageFilter);
@@ -203,12 +200,42 @@ public class SignUpActivity extends Activity implements OnClickListener {
 			number=NIA.getText().toString();
 			nick=Nick.getText().toString();
 			MainActivity.myPrefs.edit().putString("number", number ).commit();
-			MainActivity.myPrefs.edit().putString("number", number ).commit();
 			mService.connectService();
 			mService.sendMessage(createSignUpMessage());
 		}
 
 	}
+	
+	
+	
+	private class MyTask extends AsyncTask<String, Float, Integer>{
+		 
+        protected void onPreExecute() {
+            
+         }
+
+         protected Integer doInBackground(String... urls) {
+			
+        	KeyPair pair=SecurityHelper.generateRSAKeyPair();
+        	SQLiteDatabase db=MainActivity.helper.getWritableDatabase();
+        	if(db!=null){
+        	DataBaseHelper.saveKeyPair(pair,db);
+        	}else{
+        		
+        		throw (new SQLiteException("NULL DATABASE"));
+        	}
+        	mService.sendMessage(createKeyUploadMessage(pair.getPublic()));
+        	 
+        	 return 0;
+         }
+
+         protected void onProgressUpdate (Float... valores) {
+             
+         }
+
+         protected void onPostExecute(Integer bytes) {
+         }
+   }	
 
 	/////////////////////////////////////////
 	///			MESSAGE CREATION          ///
@@ -234,6 +261,27 @@ public class SignUpActivity extends Activity implements OnClickListener {
 				"<nick>"+nick+"</nick>"+
 				"<mobile>"+NIA.getText().toString()+"</mobile>"+
 				"</signup></content></message>";
+
+
+		return (header+content);
+
+	}
+	
+	public  static String createKeyUploadMessage(PublicKey key){
+
+
+		String header="<?xml version="+ " \"1.0\" "+ "encoding="+" \"UTF-8\" "+"?>" +
+				"<message><header><idSource>"+MainActivity.myPrefs.getString("token", "")+"</idSource>"+
+				"<idDestination>setichat@appspot.com</idDestination>"+
+				"<idMessage>"+new BigInteger(128, new Random()).toString(16)+"</idMessage>"+
+				"<type>9</type>"+
+				"<encrypted>false</encrypted>"+
+				"<signed>false</signed></header>";
+		
+		String content="<content><upload>"+
+				"<key>"+ new String(Base64.encodeToString(key.getEncoded(), false))+"</key>"+
+				"<type>public</type>"+
+				"</upload></content></message>";
 
 
 		return (header+content);

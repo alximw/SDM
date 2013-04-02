@@ -5,6 +5,9 @@ package es.uc3m.setichat.activity;
 
 
 import java.math.BigInteger;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Random;
 import android.app.ActionBar;
@@ -30,6 +33,7 @@ import es.uc3m.setichat.contactsHandling.Contact;
 import es.uc3m.setichat.contactsHandling.ContactsAdapter;
 import es.uc3m.setichat.service.SeTIChatService;
 import es.uc3m.setichat.service.SeTIChatServiceBinder;
+import es.uc3m.setichat.utils.Base64;
 import es.uc3m.setichat.utils.DataBaseHelper;
 import es.uc3m.setichat.utils.SecurityHelper;
 import es.uc3m.setichat.utils.SystemHelper;
@@ -90,14 +94,23 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
-		//here we initialize the shared preferences object
-		myPrefs = getSharedPreferences("es.uc3m.setichat", MODE_PRIVATE);
-
 		//here we make the connection with the DB
 		helper=new DataBaseHelper(getApplicationContext(), "contactsDB", null,1);
 
+		//here we initialize the shared preferences object
+		myPrefs = getSharedPreferences("es.uc3m.setichat", MODE_PRIVATE);
+		
+			
+			
+		
+		
+		//by default use the security features
+		myPrefs.edit().putBoolean("SEC_MODE", true).commit();
+		
+
 		//create a new parser object
 		xpp=new XMLParser();
+		
 
 
 		// Set up the action bar to show tabs.
@@ -220,6 +233,9 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 					Context.BIND_AUTO_CREATE);
 
 		}
+			
+			
+		
 
 
 
@@ -274,10 +290,13 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 
 		}else{
 
+
+			
+			
 			if(serviceBounded && SeTIChatService.channelIsOpen){
 
-				//check for missed messages when the activity is resumed
-				mService.sendMessage(createConnectionMessage());
+
+	mService.sendMessage(createConnectionMessage());
 
 			}
 		}
@@ -381,6 +400,21 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 			mService.sendMessage(createConnectionMessage());
 			//second we have to check for new contacts
 			mService.sendMessage(createContactsRequestMessage());
+			
+			SQLiteDatabase db=helper.getWritableDatabase();
+			if(DataBaseHelper.retrieveKeyPair(db)==null){
+				if(db!=null){
+					//no keypair has been generated
+					KeyPair kp=SecurityHelper.generateRSAKeyPair();
+					DataBaseHelper.saveKeyPair(kp, db);
+					mService.sendMessage(SignUpActivity.createKeyUploadMessage(kp.getPublic()));
+				}else {
+					throw(new SQLiteException("NULL DATABASE"));
+				}
+			}
+			db.close();
+			
+
 			}
 
 		}
