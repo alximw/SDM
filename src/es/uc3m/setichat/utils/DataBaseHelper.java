@@ -6,6 +6,7 @@ import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
@@ -31,7 +32,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 	private final static String MESSAGES_TABLE="messages";
 	private final static String PUBLIC_KEYS_TABLE="pubkeys";
 	private final static String KEYPAIRS_TABLE="keypairs";
-
+	private final static String ID_MESSAGES_TABLE="idmessages";
 
 
 				
@@ -46,17 +47,16 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 	public void onCreate(SQLiteDatabase database) {
 		//create all the DB tables
 
-		//contacts database
+		//contacts table
 		database.execSQL("CREATE TABLE "+CONTACTS_TABLE+"(nick TEXT,number TEXT PRIMARY KEY);");
-		//unreadmessages database
-		database.execSQL("CREATE TABLE "+UNREADMESSAGES_TABLE+"("+"_id INTEGER PRIMARY KEY, number TEXT ,message TEXT);");
 		//messages table
 		database.execSQL("CREATE TABLE "+MESSAGES_TABLE+"(_id INTEGER PRIMARY KEY, sender TEXT, receiver TEXT, date TIMESTAMP DEFAULT current_timestamp, message TEXT);");
 		//public keys
 		database.execSQL("CREATE TABLE "+PUBLIC_KEYS_TABLE+"(number TEXT,key TEXT,isValid INTEGER, PRIMARY KEY(number,isValid));");
 		//keyPairs
 		database.execSQL("CREATE TABLE "+KEYPAIRS_TABLE+"(pubKey TEXT,privKey TEXT,isValid INTEGER, PRIMARY KEY(pubKey,privKey));");
-
+		//id message
+		database.execSQL("CREATE TABLE "+ID_MESSAGES_TABLE+"(_id INTEGER PRIMARY KEY,idmessage TEXT);");
 
 	}
 
@@ -69,17 +69,16 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 		database.execSQL("DROP TABLE IF EXISTS "+MESSAGES_TABLE);
 
 		//create all tables again
-		//contacts database
+		//contacts table
 		database.execSQL("CREATE TABLE "+CONTACTS_TABLE+"(nick TEXT,number TEXT PRIMARY KEY);");
-		//messages database
-		database.execSQL("CREATE TABLE "+UNREADMESSAGES_TABLE+"("+"_id INTEGER PRIMARY KEY, number TEXT ,message TEXT);");
 		//messages table
 		database.execSQL("CREATE TABLE "+MESSAGES_TABLE+"(_id INTEGER PRIMARY KEY, sender TEXT, receiver TEXT, date INT, message TEXT);");
 		//public keys
 		database.execSQL("CREATE TABLE "+PUBLIC_KEYS_TABLE+"(number TEXT,key TEXT,isValid INTEGER, PRIMARY KEY(number,isValid));");
 		//keyPairs
 		database.execSQL("CREATE TABLE "+KEYPAIRS_TABLE+"(pubKey TEXT,privKey TEXT,isValid INTEGER, PRIMARY KEY(pubKey,privKey));");
-
+		//id message
+		database.execSQL("CREATE TABLE "+ID_MESSAGES_TABLE+"(_id INTEGER PRIMARY KEY,idmessage TEXT);");
 	}
 
 
@@ -334,10 +333,77 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 		return pair;
 	}
 	
+	public static RSAPublicKey getContactPubKey(SQLiteDatabase db,String number){
+		
+		RSAPublicKey pubKey=null;
+		Cursor result=db.query(PUBLIC_KEYS_TABLE, new String[]{"key"}, "number=? AND isValid=?", new String[]{number,"1"}, null,null,null);
+		Log.i("[DB]","looking for contact pubkey: "+result.getCount());
+
+		if(result.moveToFirst()){
+			
+		    X509EncodedKeySpec spec = new X509EncodedKeySpec(Base64.decode(result.getString(0)));
+		    KeyFactory kf;
+			try {
+				kf = KeyFactory.getInstance("RSA");
+				pubKey = (RSAPublicKey) kf.generatePublic(spec);
+
+			} catch (NoSuchAlgorithmException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}catch (InvalidKeySpecException e2) {
+				// TODO Auto-generated catch block
+				e2.printStackTrace();
+			}
+			
+		}
+		
+		
+		return pubKey;
+	}
+	
+	
+	public static void saveContactPubKey(String contact, String pubKey,SQLiteDatabase db){
+		
+		db.execSQL("INSERT INTO "+PUBLIC_KEYS_TABLE+" (number,key,isValid) VALUES('"+contact+"','"+pubKey+"','1');");
+		
+		
+		Log.i("[DB]","Saved");
+
+	
+	}
+	
+	public static void deleteRevokedKey(String contact,SQLiteDatabase db){
+		
+		db.delete(PUBLIC_KEYS_TABLE, "number=? AND isValid=?", new String[]{contact,"1"});
+		
+		
+	}
+		
+		
+	public static void saveMessageID(String messageID,SQLiteDatabase db){
+		
+		db.execSQL("INSERT INTO "+ID_MESSAGES_TABLE+" (idmessage) VALUES('"+messageID+"');");
+		
+		
+		
+	}
+	
+	public static boolean messageIDExists(String messageID,SQLiteDatabase db){
+		
+		boolean exist=false;
+		Cursor result=db.query(ID_MESSAGES_TABLE, null, "idmessage=?", new String[]{messageID}, null,null,null);
+		
+		if(result.moveToFirst()){
+			exist=true;
+		}
+		
+		
+		return exist;
+	}
 	
 	
 	
-	
+		
 	
 }
 

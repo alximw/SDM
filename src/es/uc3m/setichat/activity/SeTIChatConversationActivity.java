@@ -1,6 +1,7 @@
 package es.uc3m.setichat.activity;
 
 import java.math.BigInteger;
+import java.security.interfaces.RSAPublicKey;
 import java.sql.Time;
 import java.util.Random;
 
@@ -12,6 +13,7 @@ import android.app.ListFragment;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -22,6 +24,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.media.RingtoneManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -74,9 +77,7 @@ public class SeTIChatConversationActivity extends Activity {
 
 	private static NotificationManager notificationManager;
 	private Notification notif;
-	private boolean isNotified;
-	
-	
+	private RSAPublicKey pubkey;
 	
 	String myNumber;
 	Contact contact;
@@ -90,7 +91,11 @@ public class SeTIChatConversationActivity extends Activity {
 			// service that we know is running in our own process, we can
 			// cast its IBinder to a concrete class and directly access it.
 			mService = SeTIChatServiceBinder.getService();
-
+			if(pubkey==null){
+				
+				mService.sendMessage(createPublicKeyRequest(contact.getNumber()));
+				
+			}
 			DEBUG = true;
 
 			render();
@@ -121,12 +126,13 @@ public class SeTIChatConversationActivity extends Activity {
 		myNumber=MainActivity.myPrefs.getString("number", "");
 
 		
-		isNotified=getIntent().getBooleanExtra("notified",false);
 		
 
 		contact=(Contact) getIntent().getSerializableExtra("contact");
 		DataBaseHelper.getMessages(contact.getNumber(), db);
-
+		//look for the contacts pubkey
+		
+		
 		this.setTitle("SetiChatting with "+contact.getNick());
 		parser=new XMLParser();
 		//lets define a filter so we can catch the intent launched on mainActivity
@@ -239,10 +245,11 @@ public class SeTIChatConversationActivity extends Activity {
 	protected void onStart() {
 		// TODO Auto-generated method stub
 		super.onStart();
-		
 		bindService(new Intent(SeTIChatConversationActivity.this,
 				SeTIChatService.class), mConnection,
 				Context.BIND_AUTO_CREATE);
+		
+		
 		// Tell the user about the service.
 		Toast.makeText(SeTIChatConversationActivity.this, "Connected", // R.string.local_service_connected,
 				Toast.LENGTH_SHORT).show();
@@ -274,6 +281,20 @@ public class SeTIChatConversationActivity extends Activity {
 	protected void onResume() {
 		super.onResume();
 
+		SQLiteDatabase db=MainActivity.helper.getReadableDatabase();
+		if(db!=null){
+			
+			
+			pubkey=DataBaseHelper.getContactPubKey(db, contact.getNumber());
+
+			
+			
+		}else{
+			
+			throw(new SQLiteException("NULL DATABASE"));
+			
+		}
+		
 
 	}
 
@@ -356,11 +377,7 @@ public class SeTIChatConversationActivity extends Activity {
 
 
 
-				//build the chat message
-				IvParameterSpec IV=SecurityHelper.generateAESIV();
-				SecretKeySpec key=SecurityHelper.generateAES128Key();
-				String mode=SecurityHelper.SETICHAT_AES_MODE;
-				String msg=new String(SecurityHelper.encryptAES128(IV, key,mode, (String) text.getText()));
+				
 				
 
 				//send message using the service instance
@@ -420,51 +437,41 @@ public void updateChatView(){
    ///			 	METHODS              ///
   /////////////////////////////////////////	
 	
-	
-	public  String createChatMessage(String destination,String msg, boolean goesEncrypted,boolean goesSigned){
-			
-		bigIn=new BigInteger(128, new Random());
-		String idSource,idDestination,idMessage,content;
-		SecretKeySpec key=SecurityHelper.generateAES128Key();
-		IvParameterSpec iv=SecurityHelper.generateAESIV();
-		byte[] initVector,encryptedAESK = null,encryptedMessage;
-		byte[] confidentialMessage;
-		byte[] messageB64;
-		
-		
-		idSource="<idSource>"+MainActivity.myPrefs.getString("token", null)+"</idSource>";
-		idDestination="<idDestination>"+destination+"</idDestination>";
-		idMessage="<idMessage>"+bigIn.toString(16)+"</idMessage>";
-		
-		if(goesEncrypted){
-			
-			encryptedMessage=SecurityHelper.encryptAES128(iv, key, SecurityHelper.SETICHAT_AES_MODE, msg);
-			initVector=iv.getIV();
-			
-			//get pair's public key and encrypt the AES key with it
-			
-			
-			confidentialMessage=new byte[initVector.length+encryptedAESK.length+encryptedMessage.length];
-			
-			System.arraycopy(encryptedAESK,0,confidentialMessage, 0, encryptedAESK.length);
-			System.arraycopy(initVector, 0, confidentialMessage,encryptedAESK.length, initVector.length);
-			System.arraycopy(encryptedMessage, 0,confidentialMessage,encryptedAESK.length+initVector.length, encryptedMessage.length);
-			messageB64=Base64.encodeToByte(confidentialMessage, false);
-			
-			content="<content><chatMessage>"+new String(messageB64)+"</chatMessage></content></message>";
-			
-		}else{
-			
-			content="<content><chatMessage>"+msg+"</chatMessage></content></message>";
+	public static String createPublicKeyRequest(String destination){
+
+
+			String header="<?xml version="+ " \"1.0\" "+ "encoding="+" \"UTF-8\" "+"?>" +
+					"<message><header>" +
+					"<idSource>"+MainActivity.myPrefs.getString("token", "")+"</idSource>"+
+					"<idDestination>setichat@appspot.com</idDestination>"+
+					"<idMessage>"+new BigInteger(128,new Random()).toString(16)+"</idMessage>"+
+					"<type>10</type>"+
+					"<encrypted>false</encrypted>"+
+					"<signed>false</signed></header>";
+			String content="<content><keyrequest>"+
+						"<type>public</type>"+
+						"<mobile>"+destination+"</mobile>"+
+					"</keyrequest></content></message>";
+
+
+			return (header+content);
 
 		}
 		
 		
-		if(goesSigned){
+		
+		
+		
+	
+	public  String createChatMessage(String destination,String msg, boolean goesEncrypted,boolean goesSigned){
 			
-			//sign the message with my private key
+
+		
+	
 			
-		}
+			String content="<content><chatMessage>"+msg+"</chatMessage></content></message>";
+
+		
 		
 		
 
@@ -472,7 +479,7 @@ public void updateChatView(){
 					"<message><header>"+
 					"<idSource>"+MainActivity.myPrefs.getString("token", null)+"</idSource>"+
 					"<idDestination>"+destination+"</idDestination>"+
-					"<idMessage>"+bigIn.toString(16)+"</idMessage>"+
+					"<idMessage>"+new BigInteger(16,new Random())+"</idMessage>"+
 					"<type>4</type>"+
 					"<encrypted>false</encrypted>"+
 					"<signed>false</signed>"+

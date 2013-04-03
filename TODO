@@ -1,0 +1,2 @@
+1.fix database methods to make them not ask for a database instance as parameter
+2.fix retievecontacts method to return a null pointer if no contacts found.

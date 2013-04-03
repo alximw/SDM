@@ -82,6 +82,9 @@ public class SeTIChatService extends Service implements ChannelService {
 		super.onCreate();
 		Log.i("SeTIChat Service", "Service created");
 
+		
+if(MainActivity.myPrefs==null){		MainActivity.myPrefs = getSharedPreferences("es.uc3m.setichat", MODE_PRIVATE);}
+
 		if(!MainActivity.myPrefs.getString("number", "").equals("")){
 			
 			channel = new ChannelAPI();
@@ -221,6 +224,9 @@ public class SeTIChatService extends Service implements ChannelService {
 	 */
 	@Override
 	public void onMessage(String message) {
+		if(MainActivity.helper==null){
+			MainActivity.helper=new DataBaseHelper(getApplicationContext(), "contactsDB", null,1);
+		}
 		Log.i("onMessage", "Message received :"+message);
 		// TODO Auto-generated method stub
 		String intentKey = "es.uc3m.SeTIChat.CHAT_MESSAGE";
@@ -240,8 +246,7 @@ public class SeTIChatService extends Service implements ChannelService {
 		Intent notifIntent;
 		
 		//if the message contains a chat message...
-		if(xpp.getTagValue(message, "type").toString().equals("4")){
-
+		if(xpp.getFirstTagValue(message, "type").toString().equals("4")){
 
 			//..we have to check which it's the activity on the foreground
 
@@ -313,6 +318,43 @@ public class SeTIChatService extends Service implements ChannelService {
 				notificationManager.notify(id, notif);
 
 			}
+			
+			//if key download message
+		}else if(xpp.getFirstTagValue(message, "type").toString().equals("8")){ 
+
+			SQLiteDatabase db=MainActivity.helper.getWritableDatabase();
+			String pubKey=xpp.getTagValue(message, "key");
+			String source=xpp.getTagValue(message, "mobile");
+
+			
+			if(db!=null){
+				
+				DataBaseHelper.saveContactPubKey(source, pubKey, db);
+				
+				
+			}else{
+				
+				throw (new SQLiteException("NULL DATABASE"));
+			}
+			db.close();
+			
+			
+			//if key revokation message
+		}else if(xpp.getFirstTagValue(message, "type").toString().equals("7")){
+			String contact=xpp.getTagValue(message, "revokedmobile");
+			SQLiteDatabase db=MainActivity.helper.getWritableDatabase();
+			if(db!=null){
+				DataBaseHelper.deleteRevokedKey(contact,db);
+				this.sendMessage(SeTIChatConversationActivity.createPublicKeyRequest(contact));
+				
+			}else{
+				throw (new SQLiteException("NULL DATABASE"));
+			}
+			
+			
+			
+			
+			
 		}
 
 	}

@@ -51,17 +51,64 @@ public class XMLParser {
 
 	
 	
+	
+	public String getFirstTagValue(String XMLMessage, String Tag){
+		String value=null;
+		int eventType=0;
+		boolean found=false;
+		XmlPullParser xpp=getParser();
+		boolean stopCondition=(eventType != XmlPullParser.END_DOCUMENT);
+		
+		
+		try {
+			xpp.setInput(new StringReader(XMLMessage));
+		
+		
+	     while (value==null && stopCondition) {
+	      if(eventType == XmlPullParser.START_DOCUMENT) {
+	    	  
+	      } else if(eventType == XmlPullParser.START_TAG) {
+	          if(xpp.getName().equals(Tag)){
+	        	 found=true;
+	        	  
+	          }
+	      } else if(eventType == XmlPullParser.END_TAG) {
+	    	  
+	      } else if(eventType == XmlPullParser.TEXT) {
+	    	  
+	    	 if (found){ value=xpp.getText();}
+	    	 
+	    	 
+	      }
+	      eventType = xpp.next();
+	     }
+		}catch(XmlPullParserException e){
+			
+			e.printStackTrace();
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+	return value;
+	}
+	
+	
 public String getTagValue(String XMLMessage, String Tag){
 	String value=null;
 	int eventType=0;
 	boolean found=false;
 	XmlPullParser xpp=getParser();
+
+	
 	
 	try {
 		xpp.setInput(new StringReader(XMLMessage));
 	
 	
-     while (eventType != XmlPullParser.END_DOCUMENT) {
+     while (eventType != XmlPullParser.END_DOCUMENT ) {
       if(eventType == XmlPullParser.START_DOCUMENT) {
     	  
       } else if(eventType == XmlPullParser.START_TAG) {
@@ -74,8 +121,9 @@ public String getTagValue(String XMLMessage, String Tag){
       } else if(eventType == XmlPullParser.TEXT) {
     	  
     	 if (found) value=xpp.getText();
+    	 
     	 found=false;
-      
+    	 
       }
       eventType = xpp.next();
      }

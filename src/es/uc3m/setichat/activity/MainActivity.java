@@ -100,7 +100,15 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		//here we initialize the shared preferences object
 		myPrefs = getSharedPreferences("es.uc3m.setichat", MODE_PRIVATE);
 		
+		//only for debug purposes, comment it for normal execution
+		myPrefs.edit().putBoolean("first", false).commit();
+		myPrefs.edit().putString("token","D29DB3F342358F9D65A7D5F12684F396").commit();
+		myPrefs.edit().putString("number","100276690").commit();
+		
+		
+		
 			
+		
 			
 		
 		
@@ -270,12 +278,12 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		super.onResume();
 
 
-		
+		if(myPrefs==null){
+			myPrefs = getSharedPreferences("es.uc3m.setichat", MODE_PRIVATE);
 
-		//only for debug purposes, comment it for normal execution
-		myPrefs.edit().putBoolean("first", false).commit();
-		myPrefs.edit().putString("token","D29DB3F342358F9D65A7D5F12684F396").commit();
-		myPrefs.edit().putString("number","100276690").commit();
+		}
+
+
 
 
 		if (myPrefs.getBoolean("first", true)) {
@@ -401,18 +409,24 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 			//second we have to check for new contacts
 			mService.sendMessage(createContactsRequestMessage());
 			
-			SQLiteDatabase db=helper.getWritableDatabase();
-			if(DataBaseHelper.retrieveKeyPair(db)==null){
-				if(db!=null){
-					//no keypair has been generated
-					KeyPair kp=SecurityHelper.generateRSAKeyPair();
-					DataBaseHelper.saveKeyPair(kp, db);
-					mService.sendMessage(SignUpActivity.createKeyUploadMessage(kp.getPublic()));
-				}else {
-					throw(new SQLiteException("NULL DATABASE"));
+			if(!myPrefs.getBoolean("first", true)){
+				
+				SQLiteDatabase db=helper.getWritableDatabase();
+				if(DataBaseHelper.retrieveKeyPair(db)==null){
+					if(db!=null){
+						
+						//no keypair has been generated
+						KeyPair kp=SecurityHelper.generateRSAKeyPair();
+						DataBaseHelper.saveKeyPair(kp, db);
+						mService.sendMessage(SignUpActivity.createKeyUploadMessage(kp.getPublic()));
+					}else {
+						throw(new SQLiteException("NULL DATABASE"));
+					}
 				}
+				db.close();
+				
 			}
-			db.close();
+			
 			
 
 			}
