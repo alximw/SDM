@@ -3,9 +3,17 @@ package es.uc3m.setichat.service;
 
 
 import java.io.IOException;
+import java.math.BigInteger;
+import java.security.PrivateKey;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+
+import android.R.raw;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.Notification;
@@ -24,6 +32,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.IBinder;
 import android.os.Vibrator;
+import android.util.Base64;
 import android.util.Log;
 import edu.gvsu.cis.masl.channelAPI.ChannelAPI;
 import edu.gvsu.cis.masl.channelAPI.ChannelService;
@@ -32,6 +41,7 @@ import es.uc3m.setichat.activity.MainActivity;
 import es.uc3m.setichat.activity.SeTIChatConversationActivity;
 import es.uc3m.setichat.contactsHandling.Contact;
 import es.uc3m.setichat.utils.DataBaseHelper;
+import es.uc3m.setichat.utils.SecurityHelper;
 import es.uc3m.setichat.utils.SystemHelper;
 import es.uc3m.setichat.utils.XMLParser;
 
@@ -56,7 +66,7 @@ public class SeTIChatService extends Service implements ChannelService {
 	// Used to communicate with the server
 	ChannelAPI channel;
 
-	
+
 	public static boolean channelIsOpen=false;
 	// Used to bind activities
 	private final SeTIChatServiceBinder binder=new SeTIChatServiceBinder();
@@ -70,11 +80,11 @@ public class SeTIChatService extends Service implements ChannelService {
 
 
 	public void connectService(){
-		
+
 		channel = new ChannelAPI();
 		this.connect(MainActivity.myPrefs.getString("number", ""));  
 		channelIsOpen=true;
-		
+
 	}
 
 	@Override
@@ -82,17 +92,17 @@ public class SeTIChatService extends Service implements ChannelService {
 		super.onCreate();
 		Log.i("SeTIChat Service", "Service created");
 
-		
-if(MainActivity.myPrefs==null){		MainActivity.myPrefs = getSharedPreferences("es.uc3m.setichat", MODE_PRIVATE);}
+
+		if(MainActivity.myPrefs==null){		MainActivity.myPrefs = getSharedPreferences("es.uc3m.setichat", MODE_PRIVATE);}
 
 		if(!MainActivity.myPrefs.getString("number", "").equals("")){
-			
+
 			channel = new ChannelAPI();
 			this.connect(MainActivity.myPrefs.getString("number", ""));  
 			channelIsOpen=true;
 		}
-		
-		
+
+
 		binder.onCreate(this);
 
 	}
@@ -236,17 +246,120 @@ if(MainActivity.myPrefs==null){		MainActivity.myPrefs = getSharedPreferences("es
 		openIntent.putExtra("message", message);
 		openIntent.setPackage("es.uc3m.setichat");
 		Context context = getApplicationContext();
-		//Launch the onMessage intent
-		context.sendBroadcast(openIntent);  
-	
+
+
 		//instance of XMLparser for parse the massage information
 		XMLParser xpp=new XMLParser();
 		//notification associated intents
 		PendingIntent pending;
 		Intent notifIntent;
+
+		String chatMessage;
+		if(xpp.getTagValue(message, "encrypted").equals("true")){
+
+			SQLiteDatabase db=MainActivity.helper.getReadableDatabase();
+			RSAPrivateKey myPriv=(RSAPrivateKey)DataBaseHelper.retrieveKeyPair(db).getPrivate();
+			SecretKeySpec AESKey;
+			byte[] plainMessage;
+
+			Log.i("priv",myPriv.toString());
+
+			byte[] base64Message=xpp.getTagValue(message, "chatMessage").getBytes();
+
+			byte[] rawmessage=es.uc3m.setichat.utils.Base64.decode(base64Message);
+			Log.i("rawlength", String.valueOf(rawmessage.length));
+
+			byte[] encryptedKey=new byte[SecurityHelper.RSAPAIR_KEY_SIZE/8];
+			byte[] plainKey=new byte[16];
+			byte[] iv=new byte[16];
+			byte[] encryptedMessage=new byte[rawmessage.length-(encryptedKey.length+iv.length)];
+
+			System.arraycopy(rawmessage,0,encryptedKey,0,encryptedKey.length);
+			System.arraycopy(rawmessage,encryptedKey.length,iv,0, iv.length);
+			System.arraycopy(rawmessage, (encryptedKey.length+iv.length), encryptedMessage,0,encryptedMessage.length);
+
+			plainKey=SecurityHelper.publicCipher(Cipher.DECRYPT_MODE,encryptedKey, myPriv);
+			if(plainKey!=null){
+
+				AESKey=new SecretKeySpec(plainKey, "AES");
+				plainMessage=SecurityHelper.AES128(Cipher.DECRYPT_MODE, AESKey, iv, SecurityHelper.SETICHAT_AES_MODE, encryptedMessage);
+				chatMessage=new String(plainMessage);
+				Log.i("plainMessage",chatMessage);
+			}else{
+				chatMessage="DECRYPTED FAILED";
+			}
+			db.close();
+		}else{
+			chatMessage=xpp.getTagValue(message, "chatMessage");
+		}
 		
+		
+		if(xpp.getTagValue(message, "signed").equals("true")){
+			Log.i("sv","comes signed");
+			
+		SQLiteDatabase db=MainActivity.helper.getReadableDatabase();
+			RSAPublicKey key;
+			byte[] signature;
+		if(db!=null){
+			byte[] data2sign=("<idDestination>"+xpp.getTagValue(message, "idDestination")+"</idDestination>" +
+					"<idMessage>"+xpp.getTagValue(message, "idMessage")+"</idMessage>"+"<content><chatMessage>"+chatMessage+"</chatMessage></content>").getBytes();
+
+			Log.i("XXX",new String(data2sign));
+	
+			
+			key=DataBaseHelper.getContactPubKey(db, xpp.getTagValue(message, "idSource"));
+			if(key==null){
+				Log.i("sv","comes signednull");
+
+				chatMessage=chatMessage+"[CANNOT VERIFY SIGN DUE TO LACK OF KEY]";
+			}else{
+				Log.i("sv","comes signednoNull");
+
+				signature=es.uc3m.setichat.utils.Base64.decode(xpp.getTagValue(message, "signature").getBytes());
+
+				boolean verified=SecurityHelper.verifySign(data2sign,signature, key);
+				if(verified){
+					Log.i("sv","comes signedOK");
+
+					chatMessage=chatMessage+"[SIGN OK]";
+					
+				}else{
+					Log.i("sv","comes signedFAIL");
+
+					chatMessage=chatMessage+"[SIGN FAIL]";
+
+					
+				}
+				
+			}
+
+			
+			
+			
+			
+			
+		}else{
+			throw (new SQLiteException("NULL DATABASE"));
+		}
+			
+			
+			
+			
+		}
+		
+		
+		
+		
+		openIntent.putExtra("plainMessage", chatMessage);
+		sendBroadcast(openIntent);
+
 		//if the message contains a chat message...
 		if(xpp.getFirstTagValue(message, "type").toString().equals("4")){
+
+
+
+
+
 
 			//..we have to check which it's the activity on the foreground
 
@@ -266,34 +379,34 @@ if(MainActivity.myPrefs==null){		MainActivity.myPrefs = getSharedPreferences("es
 
 				//we are on contacts menu or out of the app
 
-				String pendingMessage=xpp.getTagValue(message, "chatMessage");
+				String pendingMessage=chatMessage;
 				String source=xpp.getTagValue(message, "idSource");
 				String nick="";
 				String destination=xpp.getTagValue(message, "idDestination");
 				SQLiteDatabase db=MainActivity.helper.getWritableDatabase();
 				if(db!=null){
-					
-					DataBaseHelper.writeUnreadMessages(db,pendingMessage, source);
+
+					DataBaseHelper.saveMessages(source, nick, destination, pendingMessage, db);
 					nick=DataBaseHelper.getNickByNumber(source, db);
 					if(nick.equals("Unknown Contact")){
 						nick=source;
 					}
-					
+
 					DataBaseHelper.saveMessages(source,nick,destination, pendingMessage, db);
 
 				}else{
-					
+
 					throw(new SQLiteException("NULL DATABASE"));
-					
+
 				}
 				db.close();
-				
-				
-				
+
+
+
 
 				//prepare the intents and the notification
 				notifIntent=new Intent(getApplicationContext(),SeTIChatConversationActivity.class);
-				
+
 				notifIntent.putExtra("contact", new Contact(source));
 				notifIntent.putExtra("notified", true);
 				//FLAG_UPDATE_CURRENT because we don't want to create a new intent, only overwrites the existing
@@ -307,7 +420,7 @@ if(MainActivity.myPrefs==null){		MainActivity.myPrefs = getSharedPreferences("es
 				.setDefaults(Notification.DEFAULT_SOUND)
 				.setDefaults(Notification.DEFAULT_VIBRATE)
 				.build();
-				
+
 
 
 				// Hide the notification after its selected
@@ -318,7 +431,7 @@ if(MainActivity.myPrefs==null){		MainActivity.myPrefs = getSharedPreferences("es
 				notificationManager.notify(id, notif);
 
 			}
-			
+
 			//if key download message
 		}else if(xpp.getFirstTagValue(message, "type").toString().equals("8")){ 
 
@@ -326,42 +439,42 @@ if(MainActivity.myPrefs==null){		MainActivity.myPrefs = getSharedPreferences("es
 			String pubKey=xpp.getTagValue(message, "key");
 			String source=xpp.getTagValue(message, "mobile");
 
-			
+
 			if(db!=null){
-				
+
 				DataBaseHelper.saveContactPubKey(source, pubKey, db);
-				
-				
+
+
 			}else{
-				
+
 				throw (new SQLiteException("NULL DATABASE"));
 			}
 			db.close();
-			
-			
+
+
 			//if key revokation message
 		}else if(xpp.getFirstTagValue(message, "type").toString().equals("7")){
-			String contact=xpp.getTagValue(message, "revokedmobile");
+			String contact=xpp.getTagValue(message, "revokedMobile");
 			SQLiteDatabase db=MainActivity.helper.getWritableDatabase();
 			if(db!=null){
 				DataBaseHelper.deleteRevokedKey(contact,db);
 				this.sendMessage(SeTIChatConversationActivity.createPublicKeyRequest(contact));
-				
+
 			}else{
 				throw (new SQLiteException("NULL DATABASE"));
 			}
-			
-			
-			
-			
-			
+
+
+
+
+
 		}
 
 	}
 
 
 	public ChannelAPI getOpenedChannel(){
-		
+
 		return this.channel;
 	}
 

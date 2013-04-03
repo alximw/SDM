@@ -5,6 +5,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.sql.Time;
 import java.util.Random;
 
+import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -91,7 +92,11 @@ public class SeTIChatConversationActivity extends Activity {
 			// service that we know is running in our own process, we can
 			// cast its IBinder to a concrete class and directly access it.
 			mService = SeTIChatServiceBinder.getService();
-			if(pubkey==null){
+			
+			
+			
+			
+			if(pubkey==null && MainActivity.myPrefs.getBoolean("SEC_MODE", true)){
 				
 				mService.sendMessage(createPublicKeyRequest(contact.getNumber()));
 				
@@ -130,7 +135,6 @@ public class SeTIChatConversationActivity extends Activity {
 
 		contact=(Contact) getIntent().getSerializableExtra("contact");
 		DataBaseHelper.getMessages(contact.getNumber(), db);
-		//look for the contacts pubkey
 		
 		
 		this.setTitle("SetiChatting with "+contact.getNick());
@@ -144,17 +148,18 @@ public class SeTIChatConversationActivity extends Activity {
 			@Override
 			public void onReceive(Context arg0, Intent arg1) {
 
-				String message=arg1.getCharSequenceExtra("message").toString();
+				String chatMessage=arg1.getStringExtra("plainMessage");
+				String message=arg1.getStringExtra("message");
 
 				if(parser.getTagValue(message, "type").equals("4") && parser.getTagValue(message, "idSource").equals(contact.getNumber())){
 
 					//we have received a message from the  contact
-					message=parser.getTagValue(message,"chatMessage");
+
 					Log.d("fsfsdf", "sdfsdfdf1");
 					SQLiteDatabase db=helper.getWritableDatabase();
 					
 					if(db!=null){
-					DataBaseHelper.saveMessages(contact.getNumber(),contact.getNick(),myNumber,message, db);
+					DataBaseHelper.saveMessages(contact.getNumber(),contact.getNick(),myNumber,chatMessage, db);
 					//print it on the chat view
 					}else{
 						throw(new SQLiteException("NULL DATABASE"));
@@ -167,17 +172,20 @@ public class SeTIChatConversationActivity extends Activity {
 					//message from  different contact
 
 					
+					//descifrar mensaje
+					
+					SQLiteDatabase db=MainActivity.helper.getWritableDatabase();
 					
 					helper=MainActivity.helper;
 					String othercontact_nick="";
 					String othercontact_number=parser.getTagValue(message, "idSource");
-					String pendingMessage=parser.getTagValue(message, "chatMessage");
+					String pendingMessage=arg1.getStringExtra("plainMessage");
 					String destination=parser.getTagValue(message, "idDestination");
 
 					if(db!=null){
 					//save all unread mesages
-					//DataBaseHelper.writeUnreadMessages(db, parser.getTagValue(message, "chatMessage"),othercontact_number);
-					othercontact_nick=DataBaseHelper.getNickByNumber(othercontact_number, db);
+						othercontact_nick=DataBaseHelper.getNickByNumber(othercontact_number, db);
+
 					if(othercontact_nick.equals("Unknown Contact")){
 						othercontact_nick=othercontact_number;
 					}
@@ -245,14 +253,7 @@ public class SeTIChatConversationActivity extends Activity {
 	protected void onStart() {
 		// TODO Auto-generated method stub
 		super.onStart();
-		bindService(new Intent(SeTIChatConversationActivity.this,
-				SeTIChatService.class), mConnection,
-				Context.BIND_AUTO_CREATE);
-		
-		
-		// Tell the user about the service.
-		Toast.makeText(SeTIChatConversationActivity.this, "Connected", // R.string.local_service_connected,
-				Toast.LENGTH_SHORT).show();
+
 	}
 
 
@@ -285,15 +286,22 @@ public class SeTIChatConversationActivity extends Activity {
 		if(db!=null){
 			
 			
-			pubkey=DataBaseHelper.getContactPubKey(db, contact.getNumber());
-
+		pubkey=	DataBaseHelper.getContactPubKey(db, contact.getNumber());
 			
 			
-		}else{
+		}else if(db==null){
 			
-			throw(new SQLiteException("NULL DATABASE"));
+			throw (new SQLiteException("NULL DATABASE"));
 			
 		}
+		bindService(new Intent(SeTIChatConversationActivity.this,
+				SeTIChatService.class), mConnection,
+				Context.BIND_AUTO_CREATE);
+		
+		
+		// Tell the user about the service.
+		Toast.makeText(SeTIChatConversationActivity.this, "Connected", // R.string.local_service_connected,
+				Toast.LENGTH_SHORT).show();
 		
 
 	}
@@ -375,13 +383,51 @@ public class SeTIChatConversationActivity extends Activity {
 
 				Time time = new Time(System.currentTimeMillis());
 
+				
+				if(MainActivity.myPrefs.getBoolean("SEC_MODE", true)){
+				SQLiteDatabase db=MainActivity.helper.getReadableDatabase();
+				if(db!=null && pubkey==null){
+					
+					
+					pubkey=DataBaseHelper.getContactPubKey(db, contact.getNumber());
+						if(pubkey==null){
+							
+							Toast.makeText(SeTIChatConversationActivity.this, "Cannot obtain "+contact.getNick()+"'s Public key. Sending message on plaintext...", // R.string.local_service_disconnected,
+									Toast.LENGTH_LONG).show();
+							mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),false,true));
 
+							
+						}else{
+							
+							mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),true,true));
+
+						}
+					
+					
+				}else if(db==null){
+					
+					throw(new SQLiteException("NULL DATABASE"));
+					
+				}else if(pubkey!=null){
+					
+					mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),true,true));
+
+				}
 
 				
 				
+				}else{
+					if(pubkey!=null){
+						mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),false,true));
+					}else{
+						mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),false,false));
+					}
+					
 
+					
+				}
+				
 				//send message using the service instance
-				mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),false,false));
 				db=helper.getReadableDatabase();
 				if(db!=null){
 					
@@ -465,32 +511,84 @@ public void updateChatView(){
 	
 	public  String createChatMessage(String destination,String msg, boolean goesEncrypted,boolean goesSigned){
 			
-
+		String content="";
+		String finalMessage="";
+		byte[] signature=null;
+		byte[] message_pack=null;
 		
-	
+		String idMessage=new BigInteger(128, new Random()).toString(16);
+		content="<content><chatMessage>"+msg+"</chatMessage></content>";
+
+		if(goesSigned){
 			
-			String content="<content><chatMessage>"+msg+"</chatMessage></content></message>";
 
+			SQLiteDatabase db=MainActivity.helper.getReadableDatabase();
+			byte[] data2sign=("<idDestination>"+destination+"</idDestination>"+"<idMessage>"+idMessage+"</idMessage>"+content).getBytes();
+			Log.i("XXX",new String(data2sign));
+
+			
+			
+			 signature =SecurityHelper.getSign(data2sign,DataBaseHelper.retrieveKeyPair(db).getPrivate());
+			
+			if(SecurityHelper.verifySign(data2sign, signature,DataBaseHelper.retrieveKeyPair(db).getPublic())){
+				Log.i("^.-","OK");
+			}
+			
+			
+		}
+		
+		if(goesEncrypted ){
+			SecretKeySpec AESkey=SecurityHelper.generateAES128Key();
+			byte[] AESiv=SecurityHelper.generateAESIV().getIV();
+			Log.i("iv_",new BigInteger(AESiv).toString(16));
+			byte [] encryptedText=SecurityHelper.AES128(Cipher.ENCRYPT_MODE, AESkey, AESiv, SecurityHelper.SETICHAT_AES_MODE, msg.getBytes());			
+			Log.i("text_",new BigInteger(encryptedText).toString(16));
+			byte[] encryptedKey=SecurityHelper.publicCipher(Cipher.ENCRYPT_MODE, AESkey.getEncoded(), pubkey);
+			
+			Log.i("Key ",new BigInteger(AESkey.getEncoded()).toString(16));
+
+			message_pack=new byte[encryptedText.length+AESiv.length+encryptedKey.length];
+			Log.i("todo length",String.valueOf(message_pack.length));
+
+			//System.arraycopy(AESiv, 0, message_pack, 0, 16);
+			System.arraycopy(encryptedKey, 0, message_pack, 0,encryptedKey.length );
+			System.arraycopy(AESiv, 0, message_pack, encryptedKey.length, AESiv.length);
+			System.arraycopy(encryptedText, 0, message_pack, encryptedKey.length+AESiv.length, encryptedText.length);
+			
+			content="<content><chatMessage>"+Base64.encodeToString(message_pack, false)+"</chatMessage></content>"; 
+		
+			
+		}
+
+			
 		
 		
 		
 
-			String header="<?xml version="+ " \"1.0\" "+ "encoding="+" \"UTF-8\" "+"?>"+
-					"<message><header>"+
+			
+		
+		
+			String header="<header>"+
 					"<idSource>"+MainActivity.myPrefs.getString("token", null)+"</idSource>"+
 					"<idDestination>"+destination+"</idDestination>"+
-					"<idMessage>"+new BigInteger(16,new Random())+"</idMessage>"+
+					"<idMessage>"+idMessage+"</idMessage>"+
 					"<type>4</type>"+
-					"<encrypted>false</encrypted>"+
-					"<signed>false</signed>"+
+					"<encrypted>"+String.valueOf(goesEncrypted)+"</encrypted>"+
+					"<signed>"+String.valueOf(goesSigned)+"</signed>"+
 					"</header>";
 		
 		
 
+			if(goesSigned ){
+			
+				finalMessage=header+content+"<signature>"+Base64.encodeToString(signature, false)+"</signature>";
+			}else{
+				finalMessage=header+content;
 
+			}
 
-		
-		return header+content;
+		return "<?xml version="+ " \"1.0\" "+ "encoding="+" \"UTF-8\" "+"?><message>"+finalMessage+"</message>";
+
 	}
 
 

@@ -216,7 +216,7 @@ public class SignUpActivity extends Activity implements OnClickListener {
 
          protected Integer doInBackground(String... urls) {
 			
-        	KeyPair pair=SecurityHelper.generateRSAKeyPair();
+        	KeyPair pair=SecurityHelper.generateRSAKeyPair(SecurityHelper.RSAPAIR_KEY_SIZE);
         	SQLiteDatabase db=MainActivity.helper.getWritableDatabase();
         	if(db!=null){
         	DataBaseHelper.saveKeyPair(pair,db);

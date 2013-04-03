@@ -169,7 +169,7 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 				int duration = Toast.LENGTH_SHORT;
 
 				Toast toast = Toast.makeText(context1, text, duration);
-				//toast.show();
+				toast.show();
 			}
 		};
 
@@ -259,7 +259,7 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		//first unbound from the service
 		unbindService(mConnection);
 		
-		// and then stop it
+		// and after stop it
 		
 		stopService(new Intent(MainActivity.this,
 				SeTIChatService.class));
@@ -416,7 +416,7 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 					if(db!=null){
 						
 						//no keypair has been generated
-						KeyPair kp=SecurityHelper.generateRSAKeyPair();
+						KeyPair kp=SecurityHelper.generateRSAKeyPair(SecurityHelper.RSAPAIR_KEY_SIZE);
 						DataBaseHelper.saveKeyPair(kp, db);
 						mService.sendMessage(SignUpActivity.createKeyUploadMessage(kp.getPublic()));
 					}else {

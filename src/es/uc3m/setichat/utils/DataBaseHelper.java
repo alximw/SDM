@@ -82,15 +82,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 	}
 
 
-	//this method writes the message passed on the "pendingMessage" string to the unreadmessages table
 
-	public static  int writeUnreadMessages(SQLiteDatabase db,String pendingMessage,String NIA){
-
-		db.execSQL("INSERT INTO "+UNREADMESSAGES_TABLE+"(number,message) VALUES ('"+NIA+"', '"+pendingMessage+"');");
-
-		return 0;
-
-	}
 
 
 	//used for get a String array with the database.  Each entry has the format nck.number

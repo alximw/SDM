@@ -12,6 +12,7 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.interfaces.RSAPublicKey;
 
 
 import javax.crypto.BadPaddingException;
@@ -29,6 +30,7 @@ public class SecurityHelper {
 
 	public static final String SETICHAT_AES_MODE="AES/CBC/PKCS5Padding";
 	public static final String SETICHAT_CERTIFICATE_ALGORITHM="SHA1WithRSAEncryption";
+	public static final int RSAPAIR_KEY_SIZE=1024;
 	
 	public static SecretKeySpec generateAES128Key(){
 		SecretKey secret=null;
@@ -54,15 +56,13 @@ public class SecurityHelper {
 	}
 	
 
-	public static byte[] AES128(int opMode,SecretKeySpec key,String mode,String plainText ) {
+	public static byte[] AES128(int opMode,SecretKeySpec key,byte[] IV,String mode,byte[] text ) {
 		byte[] encryptedText=null;
-		IvParameterSpec IV=generateAESIV();
 		try{
 		Cipher SymKeyCipher = Cipher.getInstance(mode);
+		SymKeyCipher.init(opMode, key, new IvParameterSpec(IV));
 		
-		SymKeyCipher.init(opMode, key, IV);
-		
-		encryptedText=SymKeyCipher.doFinal(plainText.getBytes("UTF-8"));
+		encryptedText=SymKeyCipher.doFinal(text);
 		}catch(Exception e){
 			
 			e.printStackTrace();
@@ -72,12 +72,12 @@ public class SecurityHelper {
 
 	}
 	
-	public static KeyPair generateRSAKeyPair() {
+	public static KeyPair generateRSAKeyPair(int keysize) {
 		KeyPair pair=null;
 		 KeyPairGenerator keyGen = null;
 		try {
 			keyGen = KeyPairGenerator.getInstance("RSA");
-		     keyGen.initialize(1024);
+		     keyGen.initialize(keysize);
 		     pair=keyGen.genKeyPair();
 				Log.i("public",new BigInteger(pair.getPublic().getEncoded()).toString(16));
 				Log.i("private",new BigInteger(pair.getPrivate().getEncoded()).toString(16));
@@ -92,14 +92,14 @@ public class SecurityHelper {
 	
 	
 	
-	public static String publicCipher(int opMode,String plaintext,Key key){
+	public static byte[] publicCipher(int opMode,byte[] plaintext,Key key){
 		
 		byte []result=null;
 		Cipher publicKeyCipher;
 		try {
 			publicKeyCipher = Cipher.getInstance("RSA/ECB/PKCS1PADDING");
 			publicKeyCipher.init(opMode, key);
-			result = publicKeyCipher.doFinal(plaintext.getBytes("UTF-8"));
+			result = publicKeyCipher.doFinal(plaintext);
 
 		} catch (NoSuchAlgorithmException e2) {
 			// TODO Auto-generated catch block
@@ -119,23 +119,20 @@ public class SecurityHelper {
 		} catch (BadPaddingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		} 
 		
 		
-		return Base64.encodeToString(result, false);
+		return result;
 	}
 	
 
-	public static String getSign(String dataToSign,PrivateKey key){
+	public static byte[] getSign(byte[] dataToSign,PrivateKey key){
 		
 		byte []signatureResult=null;
 		try {
 			Signature sign = Signature.getInstance("SHA1withRSA");
 			sign.initSign(key);
-			sign.update(dataToSign.getBytes("UTF-8"));
+			sign.update(dataToSign);
 			signatureResult = sign.sign();
 		} catch (InvalidKeyException e) {
 			// TODO Auto-generated catch block
@@ -143,37 +140,31 @@ public class SecurityHelper {
 		} catch (SignatureException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSuchAlgorithmException e) {
+		}  catch (NoSuchAlgorithmException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} 
 		
 		
 		
-		return Base64.encodeToString(signatureResult, false);
+		return signatureResult;
 
 	}
 	
 	
-	public static boolean verifySign(String dataToVerify,String signature,PublicKey key){
+	public static boolean verifySign(byte[] data,byte[] signature,PublicKey key){
 		
 		boolean result=false;
 		try {
 			Signature sign = Signature.getInstance("SHA1withRSA");
 			sign.initVerify(key);
-			sign.update(dataToVerify.getBytes("UTF-8"));	
-			result=sign.verify(signature.getBytes("UTF-8"));
+			sign.update(data);	
+			result=sign.verify(signature);
 		
 		} catch (InvalidKeyException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (SignatureException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (NoSuchAlgorithmException e) {
