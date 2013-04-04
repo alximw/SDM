@@ -21,8 +21,6 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteDatabase.CursorFactory;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
-import android.widget.TextView;
 
 
 public class DataBaseHelper extends SQLiteOpenHelper {
@@ -82,36 +80,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 	}
 
 
-
-
-
-	//used for get a String array with the database.  Each entry has the format nck.number
-	public static String[] contactsToStringArray( SQLiteDatabase database){
-
-		ArrayList<String> list=new ArrayList<String>();
-		database=MainActivity.helper.getReadableDatabase();
-
-
-		Cursor resultSet= database.query(CONTACTS_TABLE,null,null,null, null, null, null);
-		if(resultSet.moveToFirst()){
-			do{
-				list.add(resultSet.getString(0)+"."+resultSet.getString(1));
-
-			}while(resultSet.moveToNext());
-
-		}else{
-			list.add("<empty contact list>");
-		}
-
-		String[] contacts =new String[list.size()];
-		for(int i=0;i<list.size();i++){
-			contacts[i]=list.get(i);
-
-
-		}
-		return contacts;
-	}
-
+	//get all the contacts on the DB
 	public static ArrayList<Contact> contactsToArray(SQLiteDatabase db){
 
 		ArrayList<Contact> list=new ArrayList<Contact>();
@@ -141,25 +110,8 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 
 	}
 
-	public static int saveContacts(HashMap<String,String> contacts,SQLiteDatabase db){
 
-		String query="";
-		int entries=0;
-
-		for(String key:contacts.keySet()){
-			Cursor resultSet= db.query(CONTACTS_TABLE,null,"number=? AND nick=?",new String[]{key,contacts.get(key)}, null, null, null);
-
-			if(!resultSet.moveToFirst()){
-				query="INSERT INTO contacts(number,nick) VALUES ('"+key+"', '"+contacts.get(key)+"');";
-				Log.i("[debug]", query);
-				entries++;
-				db.execSQL(query);	
-			}
-		}
-
-		return entries;
-	}
-
+	//copy arraylist contact into the db
 	public static int saveContacts(ArrayList<Contact> contacts,SQLiteDatabase db){
 
 		String query="";
@@ -170,7 +122,6 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 
 			if(!resultSet.moveToFirst()){
 				query="INSERT INTO contacts(number,nick) VALUES ('"+contact.getNumber()+"', '"+contact.getNick()+"');";
-				Log.i("[debug]", query);
 				entries++;
 				db.execSQL(query);	
 			}
@@ -179,7 +130,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 		return entries;
 	}
 
-
+	//get contact nick by number
 	public static String getNickByNumber(String number,SQLiteDatabase db){
 		String nick="";
 		Cursor resultSet= db.query(CONTACTS_TABLE,new String[]{"nick"},"number=?",new String[]{number}, null, null, null);
@@ -193,51 +144,25 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 		return nick;
 	}
 
-	//retrieve unread message from the DB
-	public static String retrieveUnreadMessages(SQLiteDatabase db, Contact contact){
 
-		String messages="";
-		Cursor result=db.query("unreadMessages", new String[]{"message"}, "number=?", new String[]{contact.getNumber()}, null, null, null);
-
-		if(result.moveToFirst()){
-			do{
-				//if there are unread messages
-				Time time = new Time(System.currentTimeMillis());
-
-				messages+="\n"+result.getString(0)+" [@"+contact.getNick()+" at "+time+"]";
-
-
-			}while(result.moveToNext());
-		}
-		//delete the unread messages from the DB
-		db.delete("unreadMessages", "number=?", new String[]{contact.getNumber()});
-		db.close();
-
-		return messages;	
-	}
 
 	public static void saveMessages(String sender,String sender_nick, String receiver, String message,SQLiteDatabase db){
 		String message_timestamped="\n"+message+" [@"+sender_nick+" at "+new Time(System.currentTimeMillis())+"]\n";
-		Log.d("fsfsdf", "sdfsdfdf1_");
 
 		String query="INSERT INTO "+MESSAGES_TABLE+"(sender,receiver,message) VALUES('"+sender+"', '"+receiver+"','"+message_timestamped+"');";
-		Log.d("fsfsdf", "sdfsdfdf2_");
 
-		Log.d("[query ]",query);
 		
 		db.execSQL(query);
-		Log.d("fsfsdf", "sdfsdfdf33");
 
 	}
 	
 	
 	
-	
+	//get contact full chat
 	public static String retrieveChat(String contact, SQLiteDatabase db){
 		String chat="";
 		Cursor res=db.query(MESSAGES_TABLE, new String[]{"message"}, "sender=? OR receiver=?",new String[]{contact,contact},null,null,"_id ASC");
 
-		Log.d("ads", String.valueOf(res.getCount()));
 		while(res.moveToNext()){
 			
 			
@@ -251,7 +176,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 	
 	
 	
-	
+	//obtain the conversation's last message sent or received
 	public static String getLastMessages(String sender,SQLiteDatabase db){
 
 		String last="hey! wanna chat?";
@@ -265,32 +190,19 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 			return last;
 	}
 	
-	public static void getMessages(String sender,SQLiteDatabase db){
 
-		Cursor res=db.query(MESSAGES_TABLE, null, "sender=?",new String[]{sender},null,null,"date ASC");
-
-		
-		while(res.moveToNext()){
-			
-			Log.d("[lol",res.getInt(0)+" "+res.getString(1)+" "+res.getString(2)+" "+res.getString(3)+" "+res.getString(4));
-			
-		}
-
-	}
-	
+	//save users keypair
 	public static void saveKeyPair(KeyPair pair,SQLiteDatabase db){
 		String pubKey=Base64.encodeToString(pair.getPublic().getEncoded(), false);
 		String privKey=Base64.encodeToString(pair.getPrivate().getEncoded(), false);
-		String query="INSERT INTO "+KEYPAIRS_TABLE+ "(pubKey,privKey,isValid) VALUES('"+pubKey+"', '"+privKey+"', '1');";
 		
 		db.execSQL("INSERT INTO "+KEYPAIRS_TABLE+ "(pubKey,privKey,isValid) VALUES('"+pubKey+"', '"+privKey+"', '1');");
 		
 		
-		Log.i("[save keys query]",query);
 		
 	}
 	
-	
+	//retrieve user's keypair
 	public static KeyPair retrieveKeyPair(SQLiteDatabase db) {
 		Cursor result;
 		PrivateKey privKey=null;
@@ -300,8 +212,6 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 		result=db.query(KEYPAIRS_TABLE, new String[]{"pubKey","privKey"},"isValid=?" ,new String[]{"1"} ,null,null,null);
 		
 		if(result.moveToFirst()){
-			//Log.i("[retrieved pubKey]",result.getString(0));
-			//Log.i("[retrieved privKey]",result.getString(1));
 			
 			try{
 		//  get public key
@@ -329,7 +239,6 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 		
 		RSAPublicKey pubKey=null;
 		Cursor result=db.query(PUBLIC_KEYS_TABLE, new String[]{"key"}, "number=? AND isValid=?", new String[]{number,"1"}, null,null,null);
-		Log.i("[DB]","looking for contact pubkey: "+result.getCount());
 
 		if(result.moveToFirst()){
 			
@@ -359,7 +268,6 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 		db.execSQL("INSERT INTO "+PUBLIC_KEYS_TABLE+" (number,key,isValid) VALUES('"+contact+"','"+pubKey+"','1');");
 		
 		
-		Log.i("[DB]","Saved");
 
 	
 	}
@@ -394,6 +302,11 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 	}
 	
 	
+	public static void deleteKeyPair(SQLiteDatabase db){
+		
+		db.delete(KEYPAIRS_TABLE, "isValid=?", new String[]{"1"});
+		
+	}
 	
 		
 	

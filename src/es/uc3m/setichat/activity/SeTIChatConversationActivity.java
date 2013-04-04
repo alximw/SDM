@@ -4,28 +4,20 @@ import java.math.BigInteger;
 import java.security.interfaces.RSAPublicKey;
 import java.sql.Time;
 import java.util.Random;
-
 import javax.crypto.Cipher;
-import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-
 import android.app.Activity;
-import android.app.ListFragment;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
-import android.media.RingtoneManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -37,7 +29,6 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.LinearLayout.LayoutParams;
 import android.widget.ScrollView;
-import android.widget.SlidingDrawer;
 import android.widget.TextView;
 import android.widget.Toast;
 import es.uc3m.setichat.R;
@@ -70,7 +61,6 @@ public class SeTIChatConversationActivity extends Activity {
 	private boolean DEBUG = false;
 	private XMLParser parser;
 	private SeTIChatService mService;
-	private static BigInteger bigIn;
 	private static DataBaseHelper helper;
 	SQLiteDatabase db;
 	//will use this for get the message from the mainActivity
@@ -130,12 +120,8 @@ public class SeTIChatConversationActivity extends Activity {
 		db=helper.getWritableDatabase();
 		myNumber=MainActivity.myPrefs.getString("number", "");
 
-		
-		
-
+	//get the contact information from the intent
 		contact=(Contact) getIntent().getSerializableExtra("contact");
-		DataBaseHelper.getMessages(contact.getNumber(), db);
-		
 		
 		this.setTitle("SetiChatting with "+contact.getNick());
 		parser=new XMLParser();
@@ -148,14 +134,14 @@ public class SeTIChatConversationActivity extends Activity {
 			@Override
 			public void onReceive(Context arg0, Intent arg1) {
 
+				//get the plain text chatmessage
 				String chatMessage=arg1.getStringExtra("plainMessage");
+				//get the stichat message
 				String message=arg1.getStringExtra("message");
 
 				if(parser.getTagValue(message, "type").equals("4") && parser.getTagValue(message, "idSource").equals(contact.getNumber())){
 
 					//we have received a message from the  contact
-
-					Log.d("fsfsdf", "sdfsdfdf1");
 					SQLiteDatabase db=helper.getWritableDatabase();
 					
 					if(db!=null){
@@ -171,9 +157,6 @@ public class SeTIChatConversationActivity extends Activity {
 				}else if (parser.getTagValue(message, "type").equals("4") && !parser.getTagValue(message, "idSource").equals(contact.getNumber())){
 					//message from  different contact
 
-					
-					//descifrar mensaje
-					
 					SQLiteDatabase db=MainActivity.helper.getWritableDatabase();
 					
 					helper=MainActivity.helper;
@@ -219,10 +202,9 @@ public class SeTIChatConversationActivity extends Activity {
 					// Hide the notification after its selected
 					notif.flags |= Notification.FLAG_AUTO_CANCEL;
 
-					//Integer.parseInt(idSource)%5000 used as notification ID, FLAG_UPDATE_CURRENT
-					// will only update the pending intent and will not create other notifications for thw same contact
+					// will only update the pending intent and will not create other notifications for the same contact
 					int id=SystemHelper.string2Integer(othercontact_number);
-					Log.i("value",String.valueOf(id));
+
 
 					notificationManager.notify(id, notif);
 
@@ -384,21 +366,23 @@ public class SeTIChatConversationActivity extends Activity {
 				Time time = new Time(System.currentTimeMillis());
 
 				
+				//if secure mode is active
 				if(MainActivity.myPrefs.getBoolean("SEC_MODE", true)){
 				SQLiteDatabase db=MainActivity.helper.getReadableDatabase();
 				if(db!=null && pubkey==null){
 					
-					
+					//search the contacts pubkey on DB
 					pubkey=DataBaseHelper.getContactPubKey(db, contact.getNumber());
+					
 						if(pubkey==null){
-							
+								//if no key found->sen it on plaintext
 							Toast.makeText(SeTIChatConversationActivity.this, "Cannot obtain "+contact.getNick()+"'s Public key. Sending message on plaintext...", // R.string.local_service_disconnected,
 									Toast.LENGTH_LONG).show();
 							mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),false,true));
 
 							
 						}else{
-							
+							//if there is a available pubkey send the message encrypted
 							mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),true,true));
 
 						}
@@ -409,7 +393,7 @@ public class SeTIChatConversationActivity extends Activity {
 					throw(new SQLiteException("NULL DATABASE"));
 					
 				}else if(pubkey!=null){
-					
+					//if the pubkey isn't null->send the message signed and encrypted
 					mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),true,true));
 
 				}
@@ -417,9 +401,13 @@ public class SeTIChatConversationActivity extends Activity {
 				
 				
 				}else{
+					//if secure mode is active
+
 					if(pubkey!=null){
+						//even in this mode the message is sent signed
 						mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),false,true));
 					}else{
+						//if no key do not sign it
 						mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),false,false));
 					}
 					
@@ -519,38 +507,32 @@ public void updateChatView(){
 		String idMessage=new BigInteger(128, new Random()).toString(16);
 		content="<content><chatMessage>"+msg+"</chatMessage></content>";
 
+		//if the message has to be sent signed
 		if(goesSigned){
 			
 
 			SQLiteDatabase db=MainActivity.helper.getReadableDatabase();
 			byte[] data2sign=("<idDestination>"+destination+"</idDestination>"+"<idMessage>"+idMessage+"</idMessage>"+content).getBytes();
-			Log.i("XXX",new String(data2sign));
-
-			
-			
 			 signature =SecurityHelper.getSign(data2sign,DataBaseHelper.retrieveKeyPair(db).getPrivate());
-			
-			if(SecurityHelper.verifySign(data2sign, signature,DataBaseHelper.retrieveKeyPair(db).getPublic())){
-				Log.i("^.-","OK");
-			}
-			
-			
 		}
-		
+		//if the message has to be sent encrypted
 		if(goesEncrypted ){
+			//generate AES key,iv 
 			SecretKeySpec AESkey=SecurityHelper.generateAES128Key();
+			Log.i(" generated AES key",new BigInteger(AESkey.getEncoded()).toString(16));
 			byte[] AESiv=SecurityHelper.generateAESIV().getIV();
-			Log.i("iv_",new BigInteger(AESiv).toString(16));
+			Log.i(" generated AES iv",new BigInteger(AESiv).toString(16));
+			//encrypt text using AES
 			byte [] encryptedText=SecurityHelper.AES128(Cipher.ENCRYPT_MODE, AESkey, AESiv, SecurityHelper.SETICHAT_AES_MODE, msg.getBytes());			
-			Log.i("text_",new BigInteger(encryptedText).toString(16));
+			Log.i("ciphered text",new BigInteger(encryptedText).toString(16));
+			//encrypt AESKey using RSA keyPair
 			byte[] encryptedKey=SecurityHelper.publicCipher(Cipher.ENCRYPT_MODE, AESkey.getEncoded(), pubkey);
 			
-			Log.i("Key ",new BigInteger(AESkey.getEncoded()).toString(16));
+			Log.i(" ciphered Key ",new BigInteger(AESkey.getEncoded()).toString(16));
 
+			//pack the message
 			message_pack=new byte[encryptedText.length+AESiv.length+encryptedKey.length];
-			Log.i("todo length",String.valueOf(message_pack.length));
 
-			//System.arraycopy(AESiv, 0, message_pack, 0, 16);
 			System.arraycopy(encryptedKey, 0, message_pack, 0,encryptedKey.length );
 			System.arraycopy(AESiv, 0, message_pack, encryptedKey.length, AESiv.length);
 			System.arraycopy(encryptedText, 0, message_pack, encryptedKey.length+AESiv.length, encryptedText.length);
@@ -560,14 +542,6 @@ public void updateChatView(){
 			
 		}
 
-			
-		
-		
-		
-
-			
-		
-		
 			String header="<header>"+
 					"<idSource>"+MainActivity.myPrefs.getString("token", null)+"</idSource>"+
 					"<idDestination>"+destination+"</idDestination>"+

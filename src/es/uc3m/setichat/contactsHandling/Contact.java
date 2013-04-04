@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase;
 import es.uc3m.setichat.activity.MainActivity;
 import es.uc3m.setichat.utils.DataBaseHelper;
 
+
 public class Contact implements Serializable{
 
 	private String nick;

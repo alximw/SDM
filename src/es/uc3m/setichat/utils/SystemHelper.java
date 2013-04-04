@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import android.content.Context;
 import android.database.Cursor;
 import android.provider.ContactsContract;
-import android.util.Log;
 
 public class SystemHelper {
 
@@ -13,7 +12,6 @@ public class SystemHelper {
 	//this is a sort of "dispersion function".
 	//given a  n-length string, converts it into a 32-bit 
 	public static int string2Integer(String str){
-Log.i("lol","lolstar");
 		int res = 0;
 
 		for(int i = 0; i < str.length(); i++) {
@@ -55,7 +53,7 @@ Log.i("lol","lolstar");
 			}
 		}
 
-		//build te value of <cotacts> tag XML message ( on contacts request )
+		//build the value of <cotacts> tag XML message ( on contacts request )
 		for(String contact:contacts){
 			mobileList=mobileList+"<mobile>"+contact+"</mobile>";
 		}

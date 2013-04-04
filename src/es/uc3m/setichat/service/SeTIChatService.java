@@ -20,19 +20,12 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.IBinder;
-import android.os.Vibrator;
-import android.util.Base64;
 import android.util.Log;
 import edu.gvsu.cis.masl.channelAPI.ChannelAPI;
 import edu.gvsu.cis.masl.channelAPI.ChannelService;
@@ -262,12 +255,10 @@ public class SeTIChatService extends Service implements ChannelService {
 			SecretKeySpec AESKey;
 			byte[] plainMessage;
 
-			Log.i("priv",myPriv.toString());
 
 			byte[] base64Message=xpp.getTagValue(message, "chatMessage").getBytes();
 
 			byte[] rawmessage=es.uc3m.setichat.utils.Base64.decode(base64Message);
-			Log.i("rawlength", String.valueOf(rawmessage.length));
 
 			byte[] encryptedKey=new byte[SecurityHelper.RSAPAIR_KEY_SIZE/8];
 			byte[] plainKey=new byte[16];
@@ -284,9 +275,8 @@ public class SeTIChatService extends Service implements ChannelService {
 				AESKey=new SecretKeySpec(plainKey, "AES");
 				plainMessage=SecurityHelper.AES128(Cipher.DECRYPT_MODE, AESKey, iv, SecurityHelper.SETICHAT_AES_MODE, encryptedMessage);
 				chatMessage=new String(plainMessage);
-				Log.i("plainMessage",chatMessage);
 			}else{
-				chatMessage="DECRYPTED FAILED";
+				chatMessage="DECRYPT FAILED";
 			}
 			db.close();
 		}else{
@@ -295,7 +285,6 @@ public class SeTIChatService extends Service implements ChannelService {
 		
 		
 		if(xpp.getTagValue(message, "signed").equals("true")){
-			Log.i("sv","comes signed");
 			
 		SQLiteDatabase db=MainActivity.helper.getReadableDatabase();
 			RSAPublicKey key;
@@ -304,27 +293,22 @@ public class SeTIChatService extends Service implements ChannelService {
 			byte[] data2sign=("<idDestination>"+xpp.getTagValue(message, "idDestination")+"</idDestination>" +
 					"<idMessage>"+xpp.getTagValue(message, "idMessage")+"</idMessage>"+"<content><chatMessage>"+chatMessage+"</chatMessage></content>").getBytes();
 
-			Log.i("XXX",new String(data2sign));
 	
 			
 			key=DataBaseHelper.getContactPubKey(db, xpp.getTagValue(message, "idSource"));
 			if(key==null){
-				Log.i("sv","comes signednull");
 
 				chatMessage=chatMessage+"[CANNOT VERIFY SIGN DUE TO LACK OF KEY]";
 			}else{
-				Log.i("sv","comes signednoNull");
 
 				signature=es.uc3m.setichat.utils.Base64.decode(xpp.getTagValue(message, "signature").getBytes());
 
 				boolean verified=SecurityHelper.verifySign(data2sign,signature, key);
 				if(verified){
-					Log.i("sv","comes signedOK");
 
 					chatMessage=chatMessage+"[SIGN OK]";
 					
 				}else{
-					Log.i("sv","comes signedFAIL");
 
 					chatMessage=chatMessage+"[SIGN FAIL]";
 
@@ -427,7 +411,6 @@ public class SeTIChatService extends Service implements ChannelService {
 				notif.flags |= Notification.FLAG_AUTO_CANCEL;
 
 				int id=SystemHelper.string2Integer(source);
-				Log.i("value",String.valueOf(id));
 				notificationManager.notify(id, notif);
 
 			}

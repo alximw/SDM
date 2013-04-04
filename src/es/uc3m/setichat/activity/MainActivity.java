@@ -27,6 +27,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
+import android.widget.CheckBox;
 import android.widget.Toast;
 import es.uc3m.setichat.R;
 import es.uc3m.setichat.contactsHandling.Contact;
@@ -59,11 +60,11 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 
 	//BigInteger used for generate a 16bytes random number used as messageID
 	private BigInteger bigIn;
-	//the contact list that will be show
+	//the contact list that will be shown
 	ArrayList<Contact> contacts;
 
 	/*we need to find out if we are running the app 
-	 *for 1st time, so we need a place in wich 
+	 *for 1st time, so we need a place in witch 
 	 *we could save this information. 
 	 */
 	public static SharedPreferences myPrefs=null;
@@ -105,16 +106,11 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		myPrefs.edit().putString("token","D29DB3F342358F9D65A7D5F12684F396").commit();
 		myPrefs.edit().putString("number","100276690").commit();
 		
-		
-		
-			
-		
-			
-		
-		
+
+		if(myPrefs.getBoolean("first", false)){
 		//by default use the security features
 		myPrefs.edit().putBoolean("SEC_MODE", true).commit();
-		
+		}
 
 		//create a new parser object
 		xpp=new XMLParser();
@@ -125,8 +121,10 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		 actionBar = getActionBar();
 		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
 		// For each of the sections in the app, add a tab to the action bar.
+		//contacts tab
 		actionBar.addTab(actionBar.newTab().setText("Contacts")
 				.setTabListener(this));
+		//settings tab
 		actionBar.addTab(actionBar.newTab().setText("Settings")
 				.setTabListener(this));
 
@@ -278,13 +276,7 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		super.onResume();
 
 
-		if(myPrefs==null){
-			myPrefs = getSharedPreferences("es.uc3m.setichat", MODE_PRIVATE);
-
-		}
-
-
-
+	
 
 		if (myPrefs.getBoolean("first", true)) {
 
@@ -297,17 +289,14 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 			this.startActivity(toSignUp);
 
 		}else{
-
-
-			
+				//if we can use the service instance, send a connection message
 			
 			if(serviceBounded && SeTIChatService.channelIsOpen){
 
-
-	mService.sendMessage(createConnectionMessage());
-
+				mService.sendMessage(createConnectionMessage());
 			}
 		}
+		//if the contacts tab is the selected tab->refresh
 		if(actionBar.getSelectedTab().getPosition()==0){
 		getFragmentManager().beginTransaction().replace(R.id.container, new ContactsFragment()).commit();
 		}
@@ -343,10 +332,11 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		// container view.
 
 		if(tab.getPosition()==0){
+		//set the contacts fragment
 			ContactsFragment fragment = new ContactsFragment();
 			getFragmentManager().beginTransaction().replace(R.id.container, fragment).commit();
-			Log.i("dfsdf","sdfsf");
 		}else if(tab.getPosition()==1){
+			//set the settings fragment
 			SettingsFragment fragment =new SettingsFragment();
 			getFragmentManager().beginTransaction().replace(R.id.container, fragment).commit();
 
@@ -367,7 +357,6 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		if(tab.getPosition()==0){
 			ContactsFragment fragment = new ContactsFragment();
 			getFragmentManager().beginTransaction().replace(R.id.container, fragment).commit();
-			Log.i("dfsdf","sdfsf");
 		}else if(tab.getPosition()==1){
 			SettingsFragment fragment =new SettingsFragment();
 			getFragmentManager().beginTransaction().replace(R.id.container, fragment).commit();
@@ -403,26 +392,30 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 			mService = binder.getService();
 			serviceBounded=true;
 			
+			//every time we dind the service..
 			if(SeTIChatService.channelIsOpen){
-			//we have to do 2 things. First we have to check if there are new messages
+			//..we have to do 2 things. First we have to check if there are new messages..
 			mService.sendMessage(createConnectionMessage());
-			//second we have to check for new contacts
+			//..second we have to check for new contacts
 			mService.sendMessage(createContactsRequestMessage());
 			
+			
+			//the first time we bound the service, we have to check if we have a keypair
 			if(!myPrefs.getBoolean("first", true)){
 				
 				SQLiteDatabase db=helper.getWritableDatabase();
-				if(DataBaseHelper.retrieveKeyPair(db)==null){
+				
 					if(db!=null){
-						
-						//no keypair has been generated
+						if(DataBaseHelper.retrieveKeyPair(db)==null){
+						//no key pair has been generated,lets generate it
 						KeyPair kp=SecurityHelper.generateRSAKeyPair(SecurityHelper.RSAPAIR_KEY_SIZE);
 						DataBaseHelper.saveKeyPair(kp, db);
 						mService.sendMessage(SignUpActivity.createKeyUploadMessage(kp.getPublic()));
+						}
 					}else {
 						throw(new SQLiteException("NULL DATABASE"));
 					}
-				}
+				
 				db.close();
 				
 			}
@@ -480,7 +473,6 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		String content="<content><mobileList>"+
 				SystemHelper.readContacts(getApplicationContext())+
 				"</mobileList></content></message>";
-		//and send it
 
 		return header+content;
 	}

@@ -24,7 +24,6 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import android.util.Log;
 
 public class SecurityHelper {
 
@@ -32,6 +31,8 @@ public class SecurityHelper {
 	public static final String SETICHAT_CERTIFICATE_ALGORITHM="SHA1WithRSAEncryption";
 	public static final int RSAPAIR_KEY_SIZE=1024;
 	
+	
+	//generate AES128 KEY
 	public static SecretKeySpec generateAES128Key(){
 		SecretKey secret=null;
 		KeyGenerator generator=null;
@@ -47,7 +48,7 @@ public class SecurityHelper {
 		return new SecretKeySpec(secret.getEncoded(), "AES");
 	}
 	
-	
+	//generate AES 128 IV
 	public static IvParameterSpec generateAESIV(){
 		byte[] IV=new byte[16];
 		SecureRandom rand=new SecureRandom();
@@ -55,7 +56,7 @@ public class SecurityHelper {
 		return new IvParameterSpec(IV);
 	}
 	
-
+	//use AES128 symetric cipher
 	public static byte[] AES128(int opMode,SecretKeySpec key,byte[] IV,String mode,byte[] text ) {
 		byte[] encryptedText=null;
 		try{
@@ -72,6 +73,7 @@ public class SecurityHelper {
 
 	}
 	
+	//generate RSA keyPair with keysize key length
 	public static KeyPair generateRSAKeyPair(int keysize) {
 		KeyPair pair=null;
 		 KeyPairGenerator keyGen = null;
@@ -79,8 +81,6 @@ public class SecurityHelper {
 			keyGen = KeyPairGenerator.getInstance("RSA");
 		     keyGen.initialize(keysize);
 		     pair=keyGen.genKeyPair();
-				Log.i("public",new BigInteger(pair.getPublic().getEncoded()).toString(16));
-				Log.i("private",new BigInteger(pair.getPrivate().getEncoded()).toString(16));
 	
 		} catch (NoSuchAlgorithmException e) {
 			// TODO Auto-generated catch block
@@ -91,7 +91,7 @@ public class SecurityHelper {
 	}
 	
 	
-	
+	//use RSA asymmetric cipher
 	public static byte[] publicCipher(int opMode,byte[] plaintext,Key key){
 		
 		byte []result=null;
@@ -126,6 +126,7 @@ public class SecurityHelper {
 	}
 	
 
+	//get dataToSign signed with key
 	public static byte[] getSign(byte[] dataToSign,PrivateKey key){
 		
 		byte []signatureResult=null;
@@ -151,7 +152,7 @@ public class SecurityHelper {
 
 	}
 	
-	
+	//verify with signature and key the text on data  
 	public static boolean verifySign(byte[] data,byte[] signature,PublicKey key){
 		
 		boolean result=false;

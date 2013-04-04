@@ -9,7 +9,7 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="left"
-        android:checked="false"
+        android:checked="true"
         android:layout_marginBottom="5dp"
         android:text="Use security features( ciphered and digital sign)." />
 	

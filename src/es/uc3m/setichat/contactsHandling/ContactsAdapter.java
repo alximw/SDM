@@ -16,6 +16,16 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
+
+
+/**
+ * @author Alex
+ * This class is just a custom ArrayAdapter 
+ * to be used on the contact list  fragment
+ *
+ */
+
+
 public class ContactsAdapter extends ArrayAdapter<Contact> {
 private ArrayList<Contact> contacts;
 DataBaseHelper helper;
@@ -34,7 +44,6 @@ SQLiteDatabase db;
 		db=helper.getReadableDatabase();
 		
 		
-		// TODO Auto-generated method stub    public View getView(int position, View convertView, ViewGroup parent) {
         View v = convertView;
         
     if (v == null) {
@@ -60,6 +69,7 @@ SQLiteDatabase db;
         
         
     }
+    //pick contact background color
     if((position%2)==0){
     	
     	v.setBackgroundColor(Color.parseColor("#FFFFFF"));

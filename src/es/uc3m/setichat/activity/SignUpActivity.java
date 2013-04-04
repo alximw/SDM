@@ -118,7 +118,7 @@ public class SignUpActivity extends Activity implements OnClickListener {
 					Log.d("[debug]","Token received= "+userToken);
 					
 					
-					
+					//keyPair generation is a heavy task so we do it on the background in order to don't stop the GUI
 					new MyTask().execute(new String[0]);
 					
 					
