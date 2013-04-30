@@ -1,4 +1,4 @@
-package es.uc3m.setichat.activity;
+package es.uc3m.setichat.activity.GR82.NIA100276882.NIA100276690;
 
 
 
@@ -7,9 +7,14 @@ package es.uc3m.setichat.activity;
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Random;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+
 import android.app.ActionBar;
 import android.app.AlertDialog;
 import android.app.FragmentTransaction;
@@ -21,17 +26,20 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.provider.ContactsContract.Contacts.Data;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.widget.CheckBox;
 import android.widget.Toast;
-import es.uc3m.setichat.R;
+import es.uc3m.setichat.activity.GR82.NIA100276882.NIA100276690.R;
 import es.uc3m.setichat.contactsHandling.Contact;
 import es.uc3m.setichat.contactsHandling.ContactsAdapter;
+import es.uc3m.setichat.contactsHandling.User;
 import es.uc3m.setichat.service.SeTIChatService;
 import es.uc3m.setichat.service.SeTIChatServiceBinder;
 import es.uc3m.setichat.utils.Base64;
@@ -58,8 +66,6 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 	private SeTIChatService mService;
 	private static final String STATE_SELECTED_NAVIGATION_ITEM = "selected_navigation_item";
 
-	//BigInteger used for generate a 16bytes random number used as messageID
-	private BigInteger bigIn;
 	//the contact list that will be shown
 	ArrayList<Contact> contacts;
 
@@ -68,7 +74,12 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 	 *we could save this information. 
 	 */
 	public static SharedPreferences myPrefs=null;
-
+	
+	//user's secret key,this will be saved only in RAM and won't persist  once the activity has been destroyed
+	public static SecretKey key=null;
+	
+	
+	//says if the service is bind
 	boolean serviceBounded=false;
 	
 	/*
@@ -76,7 +87,7 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 	 */
 	public static DataBaseHelper helper;
 
-	//database instance used on thsi activity
+	//database instance used on this activity
 	private SQLiteDatabase database;
 
 	// Receivers that wait for notifications from the SeTIChat server
@@ -94,23 +105,24 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-
 		//here we make the connection with the DB
 		helper=new DataBaseHelper(getApplicationContext(), "contactsDB", null,1);
-
 		//here we initialize the shared preferences object
 		myPrefs = getSharedPreferences("es.uc3m.setichat", MODE_PRIVATE);
-		
-		//only for debug purposes, comment it for normal execution
-		myPrefs.edit().putBoolean("first", false).commit();
-		myPrefs.edit().putString("token","D29DB3F342358F9D65A7D5F12684F396").commit();
-		myPrefs.edit().putString("number","100276690").commit();
-		
 
-		if(myPrefs.getBoolean("first", false)){
+		//the first time we run the app
+		if(myPrefs.getBoolean("first", true)){
 		//by default use the security features
 		myPrefs.edit().putBoolean("SEC_MODE", true).commit();
+		}else{
+			//not first run so we are re-creating the activity
+			if(key==null){
+			//launch a intent to unlock the data since the activity is being recreated and the key variable is null
+			Intent intent=new Intent("es.uc3m.setichat.activity.GR82.NIA100276882.NIA100276690.UNLOCKACTIVITY");
+			startActivity(intent);
+			}
 		}
+		
 
 		//create a new parser object
 		xpp=new XMLParser();
@@ -121,7 +133,7 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		 actionBar = getActionBar();
 		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
 		// For each of the sections in the app, add a tab to the action bar.
-		//contacts tab
+		//contacts tabes.uc3m.setichat.activity.GR82.NIA100276882.NIA100276690.
 		actionBar.addTab(actionBar.newTab().setText("Contacts")
 				.setTabListener(this));
 		//settings tab
@@ -275,7 +287,11 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 		Log.v("MainActivity", "onResume: Resuming activity...");
 		super.onResume();
 
-
+		if(key==null && !myPrefs.getBoolean("first", true)){
+			//launch a intent to unlock the data since the activity is being recreated and the key variable is null
+			Intent intent=new Intent("es.uc3m.setichat.activity.GR82.NIA100276882.NIA100276690.UNLOCKACTIVITY");
+			startActivity(intent);
+			}
 	
 
 		if (myPrefs.getBoolean("first", true)) {
@@ -285,7 +301,7 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 			 */
 
 			//launch an intent, wake up SignUpActivity (should define it in the manifest too!)
-			Intent toSignUp=new Intent("es.uc3m.setichat.activity.SIGNUPACTIVITY");
+			Intent toSignUp=new Intent("es.uc3m.setichat.activity.GR82.NIA100276882.NIA100276690.SIGNUPACTIVITY");
 			this.startActivity(toSignUp);
 
 		}else{
@@ -392,33 +408,12 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 			mService = binder.getService();
 			serviceBounded=true;
 			
-			//every time we dind the service..
+			//every time we bind the service..
 			if(SeTIChatService.channelIsOpen){
 			//..we have to do 2 things. First we have to check if there are new messages..
 			mService.sendMessage(createConnectionMessage());
 			//..second we have to check for new contacts
 			mService.sendMessage(createContactsRequestMessage());
-			
-			
-			//the first time we bound the service, we have to check if we have a keypair
-			if(!myPrefs.getBoolean("first", true)){
-				
-				SQLiteDatabase db=helper.getWritableDatabase();
-				
-					if(db!=null){
-						if(DataBaseHelper.retrieveKeyPair(db)==null){
-						//no key pair has been generated,lets generate it
-						KeyPair kp=SecurityHelper.generateRSAKeyPair(SecurityHelper.RSAPAIR_KEY_SIZE);
-						DataBaseHelper.saveKeyPair(kp, db);
-						mService.sendMessage(SignUpActivity.createKeyUploadMessage(kp.getPublic()));
-						}
-					}else {
-						throw(new SQLiteException("NULL DATABASE"));
-					}
-				
-				db.close();
-				
-			}
 			
 			
 
@@ -459,38 +454,57 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
 	/////////////////////////////////////////	
 
 	public  String  createContactsRequestMessage(){
+		String header="",content="";
+		SQLiteDatabase db=helper.getReadableDatabase();
+		if(db!=null){
+			User user=DataBaseHelper.getUserInfo(db);
+			if(user!=null){
 
-		bigIn=new BigInteger(128, new Random());
-		String header="<?xml version="+ " \"1.0\" "+ "encoding="+" \"UTF-8\" "+"?>"+
-				"<message><header>"+
-				"<idSource>"+myPrefs.getString("token", null)+"</idSource>"+
-				"<idDestination>setichat@appspot.com</idDestination>"+
-				"<idMessage>"+bigIn.toString(16)+"</idMessage>"+
-				"<type>2</type>"+
-				"<encrypted>false</encrypted>"+
-				"<signed>false</signed>"+
-				"</header>";
-		String content="<content><mobileList>"+
-				SystemHelper.readContacts(getApplicationContext())+
-				"</mobileList></content></message>";
-
+			
+			header="<?xml version="+ " \"1.0\" "+ "encoding="+" \"UTF-8\" "+"?>"+
+					"<message><header>"+
+					"<idSource>"+user.getToken()+"</idSource>"+
+					"<idDestination>setichat@appspot.com</idDestination>"+
+					"<idMessage>"+new BigInteger(128, new Random()).toString()+"</idMessage>"+
+					"<type>2</type>"+
+					"<encrypted>false</encrypted>"+
+					"<signed>false</signed>"+
+					"</header>";
+			content="<content><mobileList>"+
+					SystemHelper.readContacts(getApplicationContext())+
+					"</mobileList></content></message>";
+			}
+		db.close();
+		}
+		
 		return header+content;
 	}
 
 	public String createConnectionMessage(){
 
-		//build connection message
-		bigIn=new BigInteger(128, new Random());
-		String header="<?xml version="+ " \"1.0\" "+ "encoding="+" \"UTF-8\" "+"?>"+
-				"<message><header>"+
-				"<idSource>"+myPrefs.getString("token", null)+"</idSource>"+
-				"<idDestination>setichat@appspot.com</idDestination>"+
-				"<idMessage>"+bigIn.toString(16)+"</idMessage>"+
-				"<type>5</type>"+
-				"<encrypted>false</encrypted>"+
-				"<signed>false</signed>"+
-				"</header>";
-		String content="<content><connection></connection></content></message>";
+		
+		String header="",content="";
+		SQLiteDatabase db=helper.getReadableDatabase();
+		if(db!=null){
+			User user=DataBaseHelper.getUserInfo(db);
+			if(user!=null){
+			
+			//build connection message
+			 header="<?xml version="+ " \"1.0\" "+ "encoding="+" \"UTF-8\" "+"?>"+
+					"<message><header>"+
+					"<idSource>"+user.getToken()+"</idSource>"+
+					"<idDestination>setichat@appspot.com</idDestination>"+
+					"<idMessage>"+new BigInteger(128, new Random()).toString()+"</idMessage>"+
+					"<type>5</type>"+
+					"<encrypted>false</encrypted>"+
+					"<signed>false</signed>"+
+					"</header>";
+			content="<content><connection></connection></content></message>";
+			}
+		db.close();
+		}
+		
+
 
 		return header+content;
 	}

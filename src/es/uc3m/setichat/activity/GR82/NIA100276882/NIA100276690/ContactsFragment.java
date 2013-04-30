@@ -1,4 +1,4 @@
-package es.uc3m.setichat.activity;
+package es.uc3m.setichat.activity.GR82.NIA100276882.NIA100276690;
 
 
 import java.util.ArrayList;
@@ -12,7 +12,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.ListView;
 import android.widget.Toast;
-import es.uc3m.setichat.R;
+import es.uc3m.setichat.activity.GR82.NIA100276882.NIA100276690.R;
 import es.uc3m.setichat.contactsHandling.Contact;
 import es.uc3m.setichat.contactsHandling.ContactsAdapter;
 import es.uc3m.setichat.service.SeTIChatService;

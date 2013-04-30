@@ -13,6 +13,8 @@ import java.util.List;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.apache.http.conn.scheme.PlainSocketFactory;
+
 import android.R.raw;
 import android.app.Activity;
 import android.app.ActivityManager;
@@ -29,10 +31,12 @@ import android.os.IBinder;
 import android.util.Log;
 import edu.gvsu.cis.masl.channelAPI.ChannelAPI;
 import edu.gvsu.cis.masl.channelAPI.ChannelService;
-import es.uc3m.setichat.R;
-import es.uc3m.setichat.activity.MainActivity;
-import es.uc3m.setichat.activity.SeTIChatConversationActivity;
+import es.uc3m.sdm.setichat2013.GR82.NIA100276882.NIA100276690.MainActivity;
+import es.uc3m.sdm.setichat2013.GR82.NIA100276882.NIA100276690.SeTIChatConversationActivity;
+import es.uc3m.sdm.setichat2013.GR82.NIA100276882.NIA100276690.R;
 import es.uc3m.setichat.contactsHandling.Contact;
+import es.uc3m.setichat.contactsHandling.User;
+import es.uc3m.setichat.utils.Base64;
 import es.uc3m.setichat.utils.DataBaseHelper;
 import es.uc3m.setichat.utils.SecurityHelper;
 import es.uc3m.setichat.utils.SystemHelper;
@@ -212,7 +216,7 @@ public class SeTIChatService extends Service implements ChannelService {
 		String intentKey = "es.uc3m.SeTIChat.CHAT_OPEN";
 		Intent openIntent = new Intent(intentKey);
 		// ÀWhy should we set a Package?
-		openIntent.setPackage("es.uc3m.setichat");
+		openIntent.setPackage("es.uc3m.sdm.setichat2013.GR82.NIA100276882.NIA100276690");
 		Context context = getApplicationContext();
 
 		context.sendBroadcast(openIntent);  
@@ -237,9 +241,8 @@ public class SeTIChatService extends Service implements ChannelService {
 		//create the intent and put the received message as extra
 		Intent openIntent = new Intent(intentKey);
 		openIntent.putExtra("message", message);
-		openIntent.setPackage("es.uc3m.setichat");
-		Context context = getApplicationContext();
-
+		openIntent.setPackage("es.uc3m.sdm.setichat2013.GR82.NIA100276882.NIA100276690");
+		User user;
 
 		//instance of XMLparser for parse the massage information
 		XMLParser xpp=new XMLParser();
@@ -248,12 +251,14 @@ public class SeTIChatService extends Service implements ChannelService {
 		Intent notifIntent;
 
 		String chatMessage;
+		String final_message;
+		byte[] plainMessage = null;
 		if(xpp.getTagValue(message, "encrypted").equals("true")){
 
 			SQLiteDatabase db=MainActivity.helper.getReadableDatabase();
-			RSAPrivateKey myPriv=(RSAPrivateKey)DataBaseHelper.retrieveKeyPair(db).getPrivate();
+			user=DataBaseHelper.getUserInfo(db);
+			PrivateKey myPriv=user.getPair().getPrivate();
 			SecretKeySpec AESKey;
-			byte[] plainMessage;
 
 
 			byte[] base64Message=xpp.getTagValue(message, "chatMessage").getBytes();
@@ -274,43 +279,52 @@ public class SeTIChatService extends Service implements ChannelService {
 
 				AESKey=new SecretKeySpec(plainKey, "AES");
 				plainMessage=SecurityHelper.AES128(Cipher.DECRYPT_MODE, AESKey, iv, SecurityHelper.SETICHAT_AES_MODE, encryptedMessage);
-				chatMessage=new String(plainMessage);
+				final_message=new String(plainMessage)+"[DECRYPT OK]";
 			}else{
-				chatMessage="DECRYPT FAILED";
+				final_message="DECRYPT FAILED";
 			}
 			db.close();
 		}else{
 			chatMessage=xpp.getTagValue(message, "chatMessage");
+			final_message=chatMessage;
 		}
 		
 		
 		if(xpp.getTagValue(message, "signed").equals("true")){
+			String data2sign="";
 			
 		SQLiteDatabase db=MainActivity.helper.getReadableDatabase();
 			RSAPublicKey key;
-			byte[] signature;
+			byte[]  signature;
 		if(db!=null){
-			byte[] data2sign=("<idDestination>"+xpp.getTagValue(message, "idDestination")+"</idDestination>" +
-					"<idMessage>"+xpp.getTagValue(message, "idMessage")+"</idMessage>"+"<content><chatMessage>"+chatMessage+"</chatMessage></content>").getBytes();
-
-	
-			
+			if(xpp.getTagValue(message, "encrypted").equals("true")){
+				data2sign=("<idDestination>"+xpp.getTagValue(message, "idDestination")+"</idDestination>" +
+					"<idMessage>"+xpp.getTagValue(message, "idMessage")+"</idMessage>"+"<content><chatMessage>"+new String(plainMessage)+"</chatMessage></content>");
 			key=DataBaseHelper.getContactPubKey(db, xpp.getTagValue(message, "idSource"));
+			}else{
+			 data2sign=("<idDestination>"+xpp.getTagValue(message, "idDestination")+"</idDestination>" +
+						"<idMessage>"+xpp.getTagValue(message, "idMessage")+"</idMessage>"+"<content><chatMessage>"+xpp.getTagValue(message, "chatMessage")+"</chatMessage></content>");
+				key=DataBaseHelper.getContactPubKey(db, xpp.getTagValue(message, "idSource"));
+			}
+			
+			
+			
 			if(key==null){
 
-				chatMessage=chatMessage+"[CANNOT VERIFY SIGN DUE TO LACK OF KEY]";
+				final_message=final_message+"[CANNOT VERIFY SIGN DUE TO LACK OF KEY]";
+				this.sendMessage(SeTIChatConversationActivity.createPublicKeyRequest(xpp.getTagValue(message, "idSource")));
 			}else{
-
-				signature=es.uc3m.setichat.utils.Base64.decode(xpp.getTagValue(message, "signature").getBytes());
-
-				boolean verified=SecurityHelper.verifySign(data2sign,signature, key);
+				//Log.i("[data]",data2sign);
+				//Log.i("[signature]",xpp.getTagValue(message, "signature"));
+				signature=Base64.decode(xpp.getTagValue(message, "signature"));
+				boolean verified=SecurityHelper.verifySign(data2sign.getBytes(),signature, key);
 				if(verified){
 
-					chatMessage=chatMessage+"[SIGN OK]";
+					final_message=final_message+"[SIGN OK]";
 					
 				}else{
 
-					chatMessage=chatMessage+"[SIGN FAIL]";
+					final_message=final_message+"[SIGN FAIL]";
 
 					
 				}
@@ -334,7 +348,7 @@ public class SeTIChatService extends Service implements ChannelService {
 		
 		
 		
-		openIntent.putExtra("plainMessage", chatMessage);
+		openIntent.putExtra("plainMessage", final_message);
 		sendBroadcast(openIntent);
 
 		//if the message contains a chat message...
@@ -353,7 +367,7 @@ public class SeTIChatService extends Service implements ChannelService {
 			onForegroundActivity=taskInfo.get(0).topActivity.getClassName();
 
 
-			if(onForegroundActivity.equals("es.uc3m.setichat.activity.SeTIChatConversationActivity")){
+			if(onForegroundActivity.equals("es.uc3m.sdm.setichat2013.GR82.NIA100276882.NIA100276690.SeTIChatConversationActivity")){
 
 				//we are on a conversation, let it worry about the notification
 
@@ -363,14 +377,14 @@ public class SeTIChatService extends Service implements ChannelService {
 
 				//we are on contacts menu or out of the app
 
-				String pendingMessage=chatMessage;
+				String pendingMessage=final_message;
 				String source=xpp.getTagValue(message, "idSource");
 				String nick="";
 				String destination=xpp.getTagValue(message, "idDestination");
 				SQLiteDatabase db=MainActivity.helper.getWritableDatabase();
 				if(db!=null){
 
-					DataBaseHelper.saveMessages(source, nick, destination, pendingMessage, db);
+					//DataBaseHelper.saveMessages(source, nick, destination, pendingMessage, db);
 					nick=DataBaseHelper.getNickByNumber(source, db);
 					if(nick.equals("Unknown Contact")){
 						nick=source;
@@ -442,7 +456,7 @@ public class SeTIChatService extends Service implements ChannelService {
 			if(db!=null){
 				DataBaseHelper.deleteRevokedKey(contact,db);
 				this.sendMessage(SeTIChatConversationActivity.createPublicKeyRequest(contact));
-
+				db.close();
 			}else{
 				throw (new SQLiteException("NULL DATABASE"));
 			}

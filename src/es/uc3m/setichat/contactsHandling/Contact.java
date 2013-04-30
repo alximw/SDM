@@ -3,7 +3,7 @@ package es.uc3m.setichat.contactsHandling;
 import java.io.Serializable;
 
 import android.database.sqlite.SQLiteDatabase;
-import es.uc3m.setichat.activity.MainActivity;
+import es.uc3m.sdm.setichat2013.GR82.NIA100276882.NIA100276690.MainActivity;
 import es.uc3m.setichat.utils.DataBaseHelper;
 
 

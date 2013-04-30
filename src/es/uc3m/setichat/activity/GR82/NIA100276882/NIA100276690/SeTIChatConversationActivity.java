@@ -1,4 +1,4 @@
-package es.uc3m.setichat.activity;
+package es.uc3m.setichat.activity.GR82.NIA100276882.NIA100276690;
 
 import java.math.BigInteger;
 import java.security.interfaces.RSAPublicKey;
@@ -31,8 +31,9 @@ import android.widget.LinearLayout.LayoutParams;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
-import es.uc3m.setichat.R;
+import es.uc3m.setichat.activity.GR82.NIA100276882.NIA100276690.R;
 import es.uc3m.setichat.contactsHandling.Contact;
+import es.uc3m.setichat.contactsHandling.User;
 import es.uc3m.setichat.service.SeTIChatService;
 import es.uc3m.setichat.service.SeTIChatServiceBinder;
 import es.uc3m.setichat.utils.Base64;
@@ -358,7 +359,7 @@ public class SeTIChatConversationActivity extends Activity {
 
 			@Override
 			public void onClick(View v) {
-
+				boolean signed = false,encrypted=false;
 				if (DEBUG)
 					Log.d("SeTIChatConversationActivity",
 							"conversationView:OnClickListener: User clicked on sent button");
@@ -379,12 +380,14 @@ public class SeTIChatConversationActivity extends Activity {
 							Toast.makeText(SeTIChatConversationActivity.this, "Cannot obtain "+contact.getNick()+"'s Public key. Sending message on plaintext...", // R.string.local_service_disconnected,
 									Toast.LENGTH_LONG).show();
 							mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),false,true));
-
+							encrypted=false;
+							signed=true;
 							
 						}else{
 							//if there is a available pubkey send the message encrypted
 							mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),true,true));
-
+							encrypted=true;
+							signed=true;
 						}
 					
 					
@@ -395,7 +398,8 @@ public class SeTIChatConversationActivity extends Activity {
 				}else if(pubkey!=null){
 					//if the pubkey isn't null->send the message signed and encrypted
 					mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),true,true));
-
+					encrypted=true;
+					signed=true;
 				}
 
 				
@@ -406,9 +410,13 @@ public class SeTIChatConversationActivity extends Activity {
 					if(pubkey!=null){
 						//even in this mode the message is sent signed
 						mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),false,true));
+						encrypted=false;
+						signed=true;
 					}else{
 						//if no key do not sign it
 						mService.sendMessage(createChatMessage(contact.getNumber(), edit.getText().toString(),false,false));
+						encrypted=false;
+						signed=false;
 					}
 					
 
@@ -418,8 +426,13 @@ public class SeTIChatConversationActivity extends Activity {
 				//send message using the service instance
 				db=helper.getReadableDatabase();
 				if(db!=null){
-					
-					DataBaseHelper.saveMessages(myNumber,"You",contact.getNumber(),edit.getText().toString(),db);	
+					String msg=edit.getText().toString();
+					if(signed){
+						msg+="[SIGNED]";
+					}if(encrypted){
+						msg+="[ENCRYPTED]";
+					}
+					DataBaseHelper.saveMessages(myNumber,"You",contact.getNumber(),msg,db);	
 				}
 				db.close();
 				// Refresh textview
@@ -472,21 +485,28 @@ public void updateChatView(){
   /////////////////////////////////////////	
 	
 	public static String createPublicKeyRequest(String destination){
-
-
-			String header="<?xml version="+ " \"1.0\" "+ "encoding="+" \"UTF-8\" "+"?>" +
+		String header="",content="";
+		SQLiteDatabase db=MainActivity.helper.getReadableDatabase();
+		if(db!=null){
+			User user=DataBaseHelper.getUserInfo(db);
+			if(user!=null){
+			
+			 header="<?xml version="+ " \"1.0\" "+ "encoding="+" \"UTF-8\" "+"?>" +
 					"<message><header>" +
-					"<idSource>"+MainActivity.myPrefs.getString("token", "")+"</idSource>"+
+					"<idSource>"+user.getToken()+"</idSource>"+
 					"<idDestination>setichat@appspot.com</idDestination>"+
 					"<idMessage>"+new BigInteger(128,new Random()).toString(16)+"</idMessage>"+
 					"<type>10</type>"+
 					"<encrypted>false</encrypted>"+
 					"<signed>false</signed></header>";
-			String content="<content><keyrequest>"+
+			 content="<content><keyrequest>"+
 						"<type>public</type>"+
 						"<mobile>"+destination+"</mobile>"+
 					"</keyrequest></content></message>";
-
+		
+			}
+		db.close();
+		}
 
 			return (header+content);
 
@@ -503,17 +523,19 @@ public void updateChatView(){
 		String finalMessage="";
 		byte[] signature=null;
 		byte[] message_pack=null;
-		
+		User user;
+		SQLiteDatabase db=MainActivity.helper.getReadableDatabase();
+		user=DataBaseHelper.getUserInfo(db);
+		db.close();
 		String idMessage=new BigInteger(128, new Random()).toString(16);
 		content="<content><chatMessage>"+msg+"</chatMessage></content>";
-
+		String data2sign = null;
 		//if the message has to be sent signed
 		if(goesSigned){
 			
 
-			SQLiteDatabase db=MainActivity.helper.getReadableDatabase();
-			byte[] data2sign=("<idDestination>"+destination+"</idDestination>"+"<idMessage>"+idMessage+"</idMessage>"+content).getBytes();
-			 signature =SecurityHelper.getSign(data2sign,DataBaseHelper.retrieveKeyPair(db).getPrivate());
+			data2sign=("<idDestination>"+destination+"</idDestination>"+"<idMessage>"+idMessage+"</idMessage>"+content);
+		 signature =SecurityHelper.getSign(data2sign.getBytes(),user.getPair().getPrivate());
 		}
 		//if the message has to be sent encrypted
 		if(goesEncrypted ){
@@ -543,7 +565,7 @@ public void updateChatView(){
 		}
 
 			String header="<header>"+
-					"<idSource>"+MainActivity.myPrefs.getString("token", null)+"</idSource>"+
+					"<idSource>"+user.getToken()+"</idSource>"+
 					"<idDestination>"+destination+"</idDestination>"+
 					"<idMessage>"+idMessage+"</idMessage>"+
 					"<type>4</type>"+
@@ -556,6 +578,8 @@ public void updateChatView(){
 			if(goesSigned ){
 			
 				finalMessage=header+content+"<signature>"+Base64.encodeToString(signature, false)+"</signature>";
+				//Log.i("[sign]",data2sign);
+				//Log.i("[sign]",Base64.encodeToString(signature, false));
 			}else{
 				finalMessage=header+content;
 

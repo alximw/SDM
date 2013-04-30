@@ -11,7 +11,7 @@
         android:layout_gravity="left"
         android:checked="true"
         android:layout_marginBottom="5dp"
-        android:text="Use security features( ciphered and digital sign)." />
+        android:text="Use security features(Message encryption)." />
 	
     	<Button
         android:id="@+id/bt_rvk"

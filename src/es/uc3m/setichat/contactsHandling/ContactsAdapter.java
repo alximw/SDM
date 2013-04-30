@@ -2,8 +2,8 @@ package es.uc3m.setichat.contactsHandling;
 
 import java.util.ArrayList;
 
-import es.uc3m.setichat.R;
-import es.uc3m.setichat.activity.MainActivity;
+import es.uc3m.sdm.setichat2013.GR82.NIA100276882.NIA100276690.MainActivity;
+import es.uc3m.sdm.setichat2013.GR82.NIA100276882.NIA100276690.R;
 import es.uc3m.setichat.utils.DataBaseHelper;
 
 import android.content.Context;

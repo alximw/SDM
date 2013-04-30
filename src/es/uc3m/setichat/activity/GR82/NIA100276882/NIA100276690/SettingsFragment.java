@@ -1,9 +1,13 @@
-package es.uc3m.setichat.activity;
+package es.uc3m.setichat.activity.GR82.NIA100276882.NIA100276690;
 
 import java.security.KeyPair;
+import java.security.PrivateKey;
 
-import es.uc3m.setichat.R;
+import javax.crypto.Cipher;
+
+import es.uc3m.setichat.activity.GR82.NIA100276882.NIA100276690.R;
 import es.uc3m.setichat.service.SeTIChatService;
+import es.uc3m.setichat.utils.Base64;
 import es.uc3m.setichat.utils.DataBaseHelper;
 import es.uc3m.setichat.utils.SecurityHelper;
 import android.app.Activity;
@@ -77,11 +81,19 @@ public class SettingsFragment extends Fragment implements OnClickListener{
 				
 				if(db!=null){
 					
-					DataBaseHelper.deleteKeyPair(db);
+					//generate a new keypair
 					KeyPair pair=SecurityHelper.generateRSAKeyPair(SecurityHelper.RSAPAIR_KEY_SIZE);
-					DataBaseHelper.saveKeyPair(pair, db);
+		        	//encrypt the private key from the generated pair using the user key
+					PrivateKey priv_key= pair.getPrivate();		        	
+		        	String encrypted_privateKey=Base64.encodeToString(SecurityHelper.AES128(Cipher.ENCRYPT_MODE, MainActivity.key, priv_key.getEncoded()), false);
+					
+		        	//save the new (keypair)privatekey once it has been encrypted
+		        	String plain_publicKey=Base64.encodeToString(pair.getPublic().getEncoded(), false);
+					DataBaseHelper.updateUser(null,null,plain_publicKey,encrypted_privateKey, db);
+					//send key upload message
 					mService.sendMessage(SignUpActivity.createKeyUploadMessage(pair.getPublic()));
 					Toast.makeText(getActivity(), "Key Pair successfully revoked. New one has been generated and on-server public key has been updated..", Toast.LENGTH_LONG).show();
+				
 				}else{
 					throw (new SQLiteException("NULL DATABASE"));
 				}

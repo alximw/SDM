@@ -104,6 +104,17 @@ public class ChannelAPI {
         }
     }
     
+    private static boolean esHexadecimal(String s){
+        String hexChars = "0123456789abcdefABCDEF";
+        for(int i = 0; i < s.length();i++)
+        {
+         if(!hexChars.contains(""+s.charAt(i)))
+         {
+         return false;
+         }
+        }
+        return true;
+        }
     /**
      * Create a Channel on the Server and return the channelID + Key
      * @param key
@@ -420,8 +431,11 @@ public class ChannelAPI {
 	                c = s.charAt(i++);
 	                if (c == 'u') {
 	                    // TODO: check that 4 more chars exist and are all hex digits
-	                    c = (char) Integer.parseInt(s.substring(i, i+4), 16);
-	                    i += 4;
+	                	if((len-i)>=4 && esHexadecimal(s.substring(i, i+4)))
+	                   	{
+	                         c = (char) Integer.parseInt(s.substring(i, i+4), 16);
+	                         i += 4;
+	                   	}
 	                } // add other cases here as desired...
 	            }
 	        } // fall through: \ escapes itself, quotes any character but u

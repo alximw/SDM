@@ -3,29 +3,31 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical" >
-    
-    
 
-        <EditText      android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:hint="NIA"
+    <EditText
         android:id="@+id/tv_Nia"
-        
-        />
-          <EditText       android:layout_width="fill_parent"
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:hint="Nick"
+        android:hint="NIA" />
+
+    <EditText
         android:id="@+id/tv_Nick"
-        
-        />
-          
-          <Button 
-              android:layout_width="fill_parent"
-              android:layout_height="wrap_content"
-              android:gravity="center_horizontal"
-              android:text="SignUp me"
-               android:id="@+id/bt_Send"
-              />
-    
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:hint="Nick" />
+
+    <EditText
+        android:id="@+id/tv_pasw"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+         android:password="true"
+        android:hint="Password" />
+
+    <Button
+        android:id="@+id/bt_Send"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:text="SignUp me" />
 
 </LinearLayout>
